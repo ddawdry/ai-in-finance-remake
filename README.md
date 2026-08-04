@@ -32,7 +32,9 @@ You will need Node.js, Python 3, and MongoDB.
 Install the frontend packages:
 
 ```powershell
+cd client
 npm install
+cd ..
 ```
 
 Install the backend packages:
@@ -46,7 +48,7 @@ cd ..
 Install the Python packages:
 
 ```powershell
-pip install pandas yfinance scikit-learn
+pip install -r ml\requirements.txt
 ```
 
 Create the local environment file:
@@ -62,7 +64,7 @@ Update `server/.env` with your own MongoDB connection and JWT secret. Do not com
 Update the market data:
 
 ```powershell
-python src\ML.py
+python ml\model.py
 ```
 
 Start the backend:
@@ -75,8 +77,18 @@ node server.js
 Start the frontend in another terminal:
 
 ```powershell
+cd client
 npm run dev
 ```
+
+## Project Structure
+
+- `client/`: React frontend
+- `server/`: Express API and MongoDB code
+- `ml/`: Python machine learning code
+- `data/`: market data used by the application
+- `tests/`: automated tests as they are added
+- `docs/`: longer setup and project notes
 
 ## Project Status
 

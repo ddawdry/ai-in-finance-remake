@@ -8,15 +8,12 @@ import DecisionPanel from "./components/DecisionPanel";
 import Login from "./pages/login";
 
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(() =>
+    Boolean(localStorage.getItem("token"))
+  );
   const [market, setMarket] = useState("AAPL");
   const [marketData, setMarketData] = useState(null);
   const [currency, setCurrency] = useState("USD"); // 💱 NEW
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) setLoggedIn(true);
-  }, []);
 
   useEffect(() => {
     if (!loggedIn) return;
@@ -65,7 +62,6 @@ export default function App() {
         />
 
         <DecisionPanel
-          market={market}
           data={selectedData}
           currency={currency}
         />

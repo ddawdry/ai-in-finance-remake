@@ -1,6 +1,6 @@
 import Simulator from "./Simulator";
 
-export default function DecisionPanel({ market, data, currency }) {
+export default function DecisionPanel({ data, currency }) {
   if (!data) return <aside style={styles.panel}>Calculating...</aside>;
 
   const isBuy = data.signal === "BUY";

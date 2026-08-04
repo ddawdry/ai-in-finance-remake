@@ -3,15 +3,15 @@ taskkill /f /im node.exe >nul 2>&1
 @echo off
 
 echo Starting Python Model
-cd /d "%~dp0\src"
-python ML.py
+cd /d "%~dp0\ml"
+python model.py
 
 echo Starting Backend Server
 cd /d "%~dp0\server"
 start cmd /k "npm install && node server.js"
 
 echo Starting Frontend
-cd /d "%~dp0"
+cd /d "%~dp0\client"
 start cmd /k "npm install && npm run dev"
 
 timeout /t 5

@@ -27,7 +27,7 @@ app.get("/api/protected", authMiddleware, (req, res) => {
 
 // Market Data API
 app.get("/api/market-data", (req, res) => {
-  const filePath = path.join(__dirname, "../src/marketData.json");
+  const filePath = path.join(__dirname, "../data/marketData.json");
 
   fs.readFile(filePath, "utf8", (err, data) => {
     if (err) {

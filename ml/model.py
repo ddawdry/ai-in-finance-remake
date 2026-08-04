@@ -12,7 +12,9 @@ def run_model():
         "BTC-USD", "ETH-USD", "SOL-USD", "ADA-USD", "DOGE-USD"
     ]
 
-    file_path = os.path.join(os.path.dirname(__file__), "marketData.json")
+    file_path = os.path.join(
+        os.path.dirname(__file__), "..", "data", "marketData.json"
+    )
 
     print("Fetching OHLC data from Yahoo Finance...")
 
