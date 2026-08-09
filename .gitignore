@@ -32,6 +32,11 @@ secrets.json
 coverage
 .cache
 
+# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
