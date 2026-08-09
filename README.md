@@ -94,6 +94,8 @@ npm run dev
 
 This is an early version that I plan to improve over time. The setup process, design, testing, data handling, and machine learning model all need more work.
 
+The scope for the first direction model is in [docs/model-scope.md](docs/model-scope.md).
+
 ## Tools
 
 - Python
