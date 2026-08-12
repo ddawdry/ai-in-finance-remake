@@ -36,6 +36,11 @@ coverage
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.pytest-temp/
+
+# Downloaded market data
+/data/raw/*
+!/data/raw/.gitkeep
 
 # Editor directories and files
 .vscode/*
