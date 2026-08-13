@@ -11,6 +11,7 @@ from ml.data_cache import (
     load_prices,
     save_prices,
 )
+from ml.validation import PriceValidationError
 
 
 def sample_prices():
@@ -103,7 +104,9 @@ def test_first_run_downloads_and_saves_prices(mock_download, tmp_path):
 
     result = get_prices(cache_dir=tmp_path)
 
-    assert result is prices
+    pd.testing.assert_frame_equal(
+        result, prices, check_freq=False, check_names=False
+    )
     mock_download.assert_called_once()
     assert (tmp_path / "AAPL_1d.csv").is_file()
 
@@ -117,8 +120,29 @@ def test_refresh_downloads_and_replaces_cache(mock_download, tmp_path):
 
     result = get_prices(refresh=True, cache_dir=tmp_path)
 
-    assert result is new_prices
+    pd.testing.assert_frame_equal(
+        result, new_prices, check_freq=False, check_names=False
+    )
     loaded = load_prices(cache_dir=tmp_path)
     pd.testing.assert_frame_equal(
         loaded, new_prices, check_freq=False, check_names=False
     )
+
+
+def test_loaded_cache_is_validated(tmp_path):
+    prices = sample_prices().drop(columns="Volume")
+    prices.index.name = "Date"
+    prices.to_csv(tmp_path / "AAPL_1d.csv")
+
+    with pytest.raises(PriceValidationError, match="missing required columns"):
+        load_prices(cache_dir=tmp_path)
+
+
+@patch("ml.data_cache.download_prices")
+def test_download_is_validated_before_saving(mock_download, tmp_path):
+    mock_download.return_value = sample_prices().drop(columns="Close")
+
+    with pytest.raises(PriceValidationError, match="missing required columns"):
+        get_prices(refresh=True, cache_dir=tmp_path)
+
+    assert not (tmp_path / "AAPL_1d.csv").exists()

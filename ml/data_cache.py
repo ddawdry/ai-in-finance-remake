@@ -6,6 +6,7 @@ import pandas as pd
 
 from ml.config import DEFAULT_CONFIG, ModelConfig
 from ml.downloader import download_prices
+from ml.validation import validate_prices
 
 
 DEFAULT_CACHE_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
@@ -38,8 +39,7 @@ def save_prices(
     cache_path = get_cache_path(config, cache_dir)
     cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-    data_to_save = prices.copy()
-    data_to_save.index.name = "Date"
+    data_to_save = validate_prices(prices)
 
     try:
         data_to_save.to_csv(cache_path)
@@ -72,7 +72,7 @@ def load_prices(
     if prices.empty:
         raise PriceCacheError(f"Cached prices at {cache_path} are empty.")
 
-    return prices
+    return validate_prices(prices)
 
 
 def get_prices(
@@ -87,6 +87,6 @@ def get_prices(
     if cache_path.is_file() and not refresh:
         return load_prices(config, cache_dir)
 
-    prices = download_prices(config)
+    prices = validate_prices(download_prices(config))
     save_prices(prices, config, cache_dir)
     return prices
