@@ -1,13 +1,20 @@
 import pandas as pd
 import pytest
 
-from ml.features import FeatureError, add_lagged_returns
+from ml.features import FeatureError, add_lagged_returns, add_moving_averages
 
 
 def sample_prices():
     return pd.DataFrame(
         {"Close": [100.0, 110.0, 121.0, 133.1, 146.41, 161.051]},
         index=pd.date_range("2025-01-01", periods=6, freq="D"),
+    )
+
+
+def moving_average_prices():
+    return pd.DataFrame(
+        {"Close": [float(price) for price in range(100, 120)]},
+        index=pd.date_range("2025-01-01", periods=20, freq="D"),
     )
 
 
@@ -105,3 +112,58 @@ def test_non_positive_close_value_is_rejected(bad_close):
 
     with pytest.raises(FeatureError, match="greater than zero"):
         add_lagged_returns(prices)
+
+
+def test_adds_all_moving_average_columns():
+    result = add_moving_averages(moving_average_prices())
+
+    for days in (5, 10, 20):
+        assert f"ma_{days}d" in result.columns
+        assert f"close_to_ma_{days}d" in result.columns
+
+
+def test_five_day_moving_average_and_ratio_are_correct():
+    result = add_moving_averages(moving_average_prices())
+
+    assert result["ma_5d"].iloc[:4].isna().all()
+    assert result.iloc[4]["ma_5d"] == pytest.approx(102.0)
+    assert result.iloc[4]["close_to_ma_5d"] == pytest.approx(104.0 / 102.0)
+
+
+def test_ten_day_moving_average_and_ratio_are_correct():
+    result = add_moving_averages(moving_average_prices())
+
+    assert result["ma_10d"].iloc[:9].isna().all()
+    assert result.iloc[9]["ma_10d"] == pytest.approx(104.5)
+    assert result.iloc[9]["close_to_ma_10d"] == pytest.approx(109.0 / 104.5)
+
+
+def test_twenty_day_moving_average_and_ratio_are_correct():
+    result = add_moving_averages(moving_average_prices())
+
+    assert result["ma_20d"].iloc[:19].isna().all()
+    assert result.iloc[19]["ma_20d"] == pytest.approx(109.5)
+    assert result.iloc[19]["close_to_ma_20d"] == pytest.approx(119.0 / 109.5)
+
+
+def test_moving_averages_do_not_change_original_data():
+    original = moving_average_prices()
+    original_before = original.copy(deep=True)
+
+    add_moving_averages(original)
+
+    pd.testing.assert_frame_equal(original, original_before)
+
+
+def test_future_price_does_not_change_earlier_moving_averages():
+    original = moving_average_prices()
+    changed = moving_average_prices()
+    changed.iloc[-1, changed.columns.get_loc("Close")] = 500.0
+
+    original_result = add_moving_averages(original)
+    changed_result = add_moving_averages(changed)
+
+    pd.testing.assert_frame_equal(
+        original_result.iloc[:-1],
+        changed_result.iloc[:-1],
+    )
