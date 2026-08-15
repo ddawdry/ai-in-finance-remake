@@ -82,3 +82,51 @@ def add_rolling_volatility(prices: pd.DataFrame) -> pd.DataFrame:
         ).std()
 
     return result
+
+
+def add_volume_and_range_features(prices: pd.DataFrame) -> pd.DataFrame:
+    """Add volume change, daily range, and open-to-close change."""
+
+    required_columns = ["Open", "High", "Low", "Close", "Volume"]
+
+    if not isinstance(prices, pd.DataFrame) or prices.empty:
+        raise FeatureError("Price data must not be empty.")
+
+    missing_columns = [
+        column for column in required_columns if column not in prices.columns
+    ]
+    if missing_columns:
+        names = ", ".join(missing_columns)
+        raise FeatureError(f"Price data is missing required columns: {names}.")
+
+    result = prices.copy()
+
+    for column in required_columns:
+        try:
+            result[column] = pd.to_numeric(result[column], errors="raise")
+        except (TypeError, ValueError) as error:
+            raise FeatureError(f"{column} must contain numbers.") from error
+
+    if result[required_columns].isna().any().any():
+        raise FeatureError("Required price data must not contain missing values.")
+
+    if (result[["Open", "High", "Low", "Close"]] <= 0).any().any():
+        raise FeatureError("Price values must be greater than zero.")
+
+    if (result["Volume"] < 0).any():
+        raise FeatureError("Volume must be zero or higher.")
+
+    previous_volume = result["Volume"].shift(1)
+    result["volume_change_1d"] = (
+        result["Volume"] - previous_volume
+    ) / previous_volume
+    result.loc[previous_volume == 0, "volume_change_1d"] = float("nan")
+
+    result["daily_range"] = (
+        result["High"] - result["Low"]
+    ) / result["Low"]
+    result["open_to_close"] = (
+        result["Close"] - result["Open"]
+    ) / result["Open"]
+
+    return result

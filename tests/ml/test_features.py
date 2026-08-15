@@ -6,6 +6,7 @@ from ml.features import (
     add_lagged_returns,
     add_moving_averages,
     add_rolling_volatility,
+    add_volume_and_range_features,
 )
 
 
@@ -40,6 +41,19 @@ def jumpy_prices():
     return pd.DataFrame(
         {"Close": closes},
         index=pd.date_range("2025-01-01", periods=21, freq="D"),
+    )
+
+
+def market_prices():
+    return pd.DataFrame(
+        {
+            "Open": [100.0, 110.0, 105.0],
+            "High": [110.0, 120.0, 115.0],
+            "Low": [90.0, 100.0, 100.0],
+            "Close": [105.0, 100.0, 110.0],
+            "Volume": [1000, 1500, 1200],
+        },
+        index=pd.date_range("2025-01-01", periods=3, freq="D"),
     )
 
 
@@ -263,3 +277,89 @@ def test_future_price_does_not_change_earlier_volatility():
         original_result.iloc[:-1],
         changed_result.iloc[:-1],
     )
+
+
+def test_adds_volume_and_range_columns():
+    result = add_volume_and_range_features(market_prices())
+
+    assert "volume_change_1d" in result.columns
+    assert "daily_range" in result.columns
+    assert "open_to_close" in result.columns
+
+
+def test_volume_change_is_correct():
+    result = add_volume_and_range_features(market_prices())
+
+    assert pd.isna(result.iloc[0]["volume_change_1d"])
+    assert result.iloc[1]["volume_change_1d"] == pytest.approx(0.5)
+    assert result.iloc[2]["volume_change_1d"] == pytest.approx(-0.2)
+
+
+def test_daily_range_is_correct():
+    result = add_volume_and_range_features(market_prices())
+
+    assert result.iloc[0]["daily_range"] == pytest.approx((110 - 90) / 90)
+
+
+def test_open_to_close_change_is_correct():
+    result = add_volume_and_range_features(market_prices())
+
+    assert result.iloc[0]["open_to_close"] == pytest.approx(0.05)
+    assert result.iloc[1]["open_to_close"] == pytest.approx(-10 / 110)
+
+
+def test_zero_previous_volume_does_not_create_infinity():
+    prices = market_prices()
+    prices.loc[prices.index[0], "Volume"] = 0
+
+    result = add_volume_and_range_features(prices)
+
+    assert pd.isna(result.iloc[1]["volume_change_1d"])
+
+
+def test_zero_current_volume_is_allowed():
+    prices = market_prices()
+    prices.loc[prices.index[1], "Volume"] = 0
+
+    result = add_volume_and_range_features(prices)
+
+    assert result.iloc[1]["volume_change_1d"] == pytest.approx(-1.0)
+
+
+def test_missing_volume_has_clear_error():
+    prices = market_prices().drop(columns="Volume")
+
+    with pytest.raises(FeatureError, match="missing required columns: Volume"):
+        add_volume_and_range_features(prices)
+
+
+def test_volume_and_range_features_do_not_change_original_data():
+    original = market_prices()
+    original_before = original.copy(deep=True)
+
+    add_volume_and_range_features(original)
+
+    pd.testing.assert_frame_equal(original, original_before)
+
+
+def test_future_row_does_not_change_earlier_volume_and_range_features():
+    original = market_prices()
+    changed = market_prices()
+    changed.iloc[-1] = [200.0, 220.0, 190.0, 210.0, 5000]
+
+    original_result = add_volume_and_range_features(original)
+    changed_result = add_volume_and_range_features(changed)
+
+    pd.testing.assert_frame_equal(
+        original_result.iloc[:-1],
+        changed_result.iloc[:-1],
+    )
+
+
+def test_volume_and_range_numeric_text_is_converted():
+    prices = market_prices().astype(str)
+
+    result = add_volume_and_range_features(prices)
+
+    assert result["Volume"].dtype.kind in "fi"
+    assert result.iloc[1]["volume_change_1d"] == pytest.approx(0.5)
