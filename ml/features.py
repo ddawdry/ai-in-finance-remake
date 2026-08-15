@@ -5,6 +5,7 @@ import pandas as pd
 
 RETURN_WINDOWS = (1, 3, 5)
 MOVING_AVERAGE_WINDOWS = (5, 10, 20)
+VOLATILITY_WINDOWS = (5, 20)
 
 
 class FeatureError(ValueError):
@@ -64,5 +65,20 @@ def add_moving_averages(prices: pd.DataFrame) -> pd.DataFrame:
             min_periods=days,
         ).mean()
         result[ratio_column] = close / result[average_column]
+
+    return result
+
+
+def add_rolling_volatility(prices: pd.DataFrame) -> pd.DataFrame:
+    """Add rolling volatility based on daily returns."""
+
+    result, close = _copy_with_numeric_close(prices)
+    daily_returns = close.pct_change(fill_method=None)
+
+    for days in VOLATILITY_WINDOWS:
+        result[f"volatility_{days}d"] = daily_returns.rolling(
+            window=days,
+            min_periods=days,
+        ).std()
 
     return result

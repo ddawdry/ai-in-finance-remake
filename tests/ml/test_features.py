@@ -1,7 +1,12 @@
 import pandas as pd
 import pytest
 
-from ml.features import FeatureError, add_lagged_returns, add_moving_averages
+from ml.features import (
+    FeatureError,
+    add_lagged_returns,
+    add_moving_averages,
+    add_rolling_volatility,
+)
 
 
 def sample_prices():
@@ -15,6 +20,26 @@ def moving_average_prices():
     return pd.DataFrame(
         {"Close": [float(price) for price in range(100, 120)]},
         index=pd.date_range("2025-01-01", periods=20, freq="D"),
+    )
+
+
+def steady_prices():
+    closes = [100.0]
+    for _ in range(20):
+        closes.append(closes[-1] * 1.01)
+    return pd.DataFrame(
+        {"Close": closes},
+        index=pd.date_range("2025-01-01", periods=21, freq="D"),
+    )
+
+
+def jumpy_prices():
+    closes = [100.0]
+    for change in [0.10, -0.08, 0.12, -0.06, 0.09] * 4:
+        closes.append(closes[-1] * (1 + change))
+    return pd.DataFrame(
+        {"Close": closes},
+        index=pd.date_range("2025-01-01", periods=21, freq="D"),
     )
 
 
@@ -162,6 +187,77 @@ def test_future_price_does_not_change_earlier_moving_averages():
 
     original_result = add_moving_averages(original)
     changed_result = add_moving_averages(changed)
+
+    pd.testing.assert_frame_equal(
+        original_result.iloc[:-1],
+        changed_result.iloc[:-1],
+    )
+
+
+def test_adds_both_volatility_columns():
+    result = add_rolling_volatility(steady_prices())
+
+    assert "volatility_5d" in result.columns
+    assert "volatility_20d" in result.columns
+
+
+def test_volatility_waits_for_enough_daily_returns():
+    result = add_rolling_volatility(steady_prices())
+
+    assert result["volatility_5d"].iloc[:5].isna().all()
+    assert result["volatility_20d"].iloc[:20].isna().all()
+    assert pd.notna(result.iloc[5]["volatility_5d"])
+    assert pd.notna(result.iloc[20]["volatility_20d"])
+
+
+def test_steady_returns_have_zero_volatility():
+    result = add_rolling_volatility(steady_prices())
+
+    assert result.iloc[-1]["volatility_5d"] == pytest.approx(0.0, abs=1e-12)
+    assert result.iloc[-1]["volatility_20d"] == pytest.approx(0.0, abs=1e-12)
+
+
+def test_jumpy_prices_have_higher_volatility():
+    steady_result = add_rolling_volatility(steady_prices())
+    jumpy_result = add_rolling_volatility(jumpy_prices())
+
+    assert (
+        jumpy_result.iloc[-1]["volatility_5d"]
+        > steady_result.iloc[-1]["volatility_5d"]
+    )
+    assert (
+        jumpy_result.iloc[-1]["volatility_20d"]
+        > steady_result.iloc[-1]["volatility_20d"]
+    )
+
+
+def test_five_day_volatility_is_correct():
+    prices = jumpy_prices()
+    expected_returns = pd.Series([0.10, -0.08, 0.12, -0.06, 0.09])
+
+    result = add_rolling_volatility(prices)
+
+    assert result.iloc[5]["volatility_5d"] == pytest.approx(
+        expected_returns.std()
+    )
+
+
+def test_volatility_does_not_change_original_data():
+    original = jumpy_prices()
+    original_before = original.copy(deep=True)
+
+    add_rolling_volatility(original)
+
+    pd.testing.assert_frame_equal(original, original_before)
+
+
+def test_future_price_does_not_change_earlier_volatility():
+    original = jumpy_prices()
+    changed = jumpy_prices()
+    changed.iloc[-1, changed.columns.get_loc("Close")] = 500.0
+
+    original_result = add_rolling_volatility(original)
+    changed_result = add_rolling_volatility(changed)
 
     pd.testing.assert_frame_equal(
         original_result.iloc[:-1],
