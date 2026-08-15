@@ -3,6 +3,7 @@ import pytest
 
 from ml.features import (
     FeatureError,
+    add_direction_target,
     add_lagged_returns,
     add_moving_averages,
     add_rolling_volatility,
@@ -54,6 +55,15 @@ def market_prices():
             "Volume": [1000, 1500, 1200],
         },
         index=pd.date_range("2025-01-01", periods=3, freq="D"),
+    )
+
+
+def target_prices():
+    return pd.DataFrame(
+        {"Close": [100.0, 105.0, 102.0, 102.0]},
+        index=pd.to_datetime(
+            ["2025-01-03", "2025-01-06", "2025-01-07", "2025-01-08"]
+        ),
     )
 
 
@@ -363,3 +373,80 @@ def test_volume_and_range_numeric_text_is_converted():
 
     assert result["Volume"].dtype.kind in "fi"
     assert result.iloc[1]["volume_change_1d"] == pytest.approx(0.5)
+
+
+def test_adds_direction_target_column():
+    result = add_direction_target(target_prices())
+
+    assert "target_up" in result.columns
+    assert str(result["target_up"].dtype) == "Int64"
+
+
+def test_higher_next_close_is_one():
+    result = add_direction_target(target_prices())
+
+    assert result.iloc[0]["target_up"] == 1
+
+
+def test_lower_next_close_is_zero():
+    result = add_direction_target(target_prices())
+
+    assert result.iloc[1]["target_up"] == 0
+
+
+def test_equal_next_close_is_zero():
+    result = add_direction_target(target_prices())
+
+    assert result.iloc[2]["target_up"] == 0
+
+
+def test_final_target_is_empty():
+    result = add_direction_target(target_prices())
+
+    assert pd.isna(result.iloc[-1]["target_up"])
+
+
+def test_each_target_matches_the_following_trading_row():
+    prices = target_prices()
+    result = add_direction_target(prices)
+
+    for position in range(len(prices) - 1):
+        expected = int(
+            prices.iloc[position + 1]["Close"]
+            > prices.iloc[position]["Close"]
+        )
+        assert result.iloc[position]["target_up"] == expected
+
+
+def test_direction_target_does_not_change_original_data():
+    original = target_prices()
+    original_before = original.copy(deep=True)
+
+    add_direction_target(original)
+
+    pd.testing.assert_frame_equal(original, original_before)
+
+
+def test_changed_future_price_only_changes_the_previous_target():
+    original = target_prices()
+    changed = target_prices()
+    changed.iloc[-1, changed.columns.get_loc("Close")] = 200.0
+
+    original_result = add_direction_target(original)
+    changed_result = add_direction_target(changed)
+
+    pd.testing.assert_series_equal(
+        original_result["target_up"].iloc[:-2],
+        changed_result["target_up"].iloc[:-2],
+    )
+    assert original_result.iloc[-2]["target_up"] == 0
+    assert changed_result.iloc[-2]["target_up"] == 1
+
+
+def test_direction_target_converts_numeric_text():
+    prices = target_prices().astype(str)
+
+    result = add_direction_target(prices)
+
+    assert result["Close"].dtype.kind in "fi"
+    assert result.iloc[0]["target_up"] == 1

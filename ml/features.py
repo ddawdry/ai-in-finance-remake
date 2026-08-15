@@ -130,3 +130,14 @@ def add_volume_and_range_features(prices: pd.DataFrame) -> pd.DataFrame:
     ) / result["Open"]
 
     return result
+
+
+def add_direction_target(prices: pd.DataFrame) -> pd.DataFrame:
+    """Add the next trading day's up-or-not target."""
+
+    result, close = _copy_with_numeric_close(prices)
+    next_close = close.shift(-1)
+    target = (next_close > close).astype("Int64")
+    target.loc[next_close.isna()] = pd.NA
+    result["target_up"] = target
+    return result
