@@ -1,13 +1,24 @@
 import pandas as pd
 import pytest
 
-from ml.baseline import BaselineError, run_majority_baseline
+from ml.baseline import (
+    BaselineError,
+    run_majority_baseline,
+    run_market_direction_baseline,
+)
 
 
 def target_data(targets, start="2025-01-01"):
     return pd.DataFrame(
         {"target_up": targets},
         index=pd.bdate_range(start, periods=len(targets)),
+    )
+
+
+def market_data(returns, targets):
+    return pd.DataFrame(
+        {"return_1d": returns, "target_up": targets},
+        index=pd.bdate_range("2025-02-01", periods=len(targets)),
     )
 
 
@@ -114,4 +125,68 @@ def test_baseline_does_not_change_original_data():
     run_majority_baseline(training_data, test_data)
 
     pd.testing.assert_frame_equal(training_data, training_before)
+    pd.testing.assert_frame_equal(test_data, test_before)
+
+
+def test_market_rule_uses_current_direction():
+    result = run_market_direction_baseline(
+        market_data([0.02, -0.01, 0.0], [1, 0, 0])
+    )
+
+    assert result["predictions"].tolist() == [1, 0, 0]
+
+
+def test_market_rule_creates_one_prediction_per_test_row():
+    test_data = market_data([0.02, -0.01, 0.0], [1, 0, 0])
+
+    result = run_market_direction_baseline(test_data)
+
+    assert len(result["predictions"]) == len(test_data)
+    assert result["predictions"].index.equals(test_data.index)
+    assert result["predictions"].name == "market_direction_prediction"
+
+
+def test_market_rule_metrics_are_correct():
+    result = run_market_direction_baseline(
+        market_data([0.02, -0.01, -0.03], [1, 0, 1])
+    )
+
+    assert result["metrics"]["accuracy"] == pytest.approx(2 / 3)
+    assert result["metrics"]["precision"] == pytest.approx(1.0)
+    assert result["metrics"]["recall"] == pytest.approx(0.5)
+    assert result["metrics"]["f1"] == pytest.approx(2 / 3)
+
+
+def test_market_rule_converts_numeric_text():
+    result = run_market_direction_baseline(
+        market_data(["0.02", "-0.01"], [1, 0])
+    )
+
+    assert result["predictions"].tolist() == [1, 0]
+
+
+def test_market_rule_requires_return_column():
+    with pytest.raises(BaselineError, match="must contain return_1d"):
+        run_market_direction_baseline(target_data([0, 1]))
+
+
+def test_market_rule_rejects_missing_return():
+    with pytest.raises(BaselineError, match="must not contain missing values"):
+        run_market_direction_baseline(market_data([0.01, None], [1, 0]))
+
+
+@pytest.mark.parametrize("bad_return", ["unknown", float("inf"), float("-inf")])
+def test_market_rule_rejects_bad_return(bad_return):
+    message = "finite numbers" if isinstance(bad_return, float) else "numbers"
+
+    with pytest.raises(BaselineError, match=message):
+        run_market_direction_baseline(market_data([0.01, bad_return], [1, 0]))
+
+
+def test_market_rule_does_not_change_test_data():
+    test_data = market_data([0.02, -0.01], [1, 0])
+    test_before = test_data.copy(deep=True)
+
+    run_market_direction_baseline(test_data)
+
     pd.testing.assert_frame_equal(test_data, test_before)

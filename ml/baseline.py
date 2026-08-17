@@ -1,4 +1,4 @@
-"""Create and score a simple majority-class baseline."""
+"""Create and score simple direction baselines."""
 
 import pandas as pd
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
@@ -7,7 +7,7 @@ from ml.dataset import TARGET_COLUMN
 
 
 class BaselineError(ValueError):
-    """Raised when the baseline cannot use the given targets."""
+    """Raised when a baseline cannot use the given data."""
 
 
 def _read_targets(data: pd.DataFrame, label: str) -> pd.Series:
@@ -25,6 +25,17 @@ def _read_targets(data: pd.DataFrame, label: str) -> pd.Series:
         raise BaselineError(f"{label} targets must contain only 0 and 1.")
 
     return targets.astype("int64")
+
+
+def _calculate_metrics(targets: pd.Series, predictions: pd.Series) -> dict:
+    return {
+        "accuracy": float(accuracy_score(targets, predictions)),
+        "precision": float(
+            precision_score(targets, predictions, zero_division=0)
+        ),
+        "recall": float(recall_score(targets, predictions, zero_division=0)),
+        "f1": float(f1_score(targets, predictions, zero_division=0)),
+    }
 
 
 def run_majority_baseline(
@@ -47,17 +58,38 @@ def run_majority_baseline(
         name="majority_prediction",
     )
 
-    metrics = {
-        "accuracy": float(accuracy_score(test_targets, predictions)),
-        "precision": float(
-            precision_score(test_targets, predictions, zero_division=0)
-        ),
-        "recall": float(recall_score(test_targets, predictions, zero_division=0)),
-        "f1": float(f1_score(test_targets, predictions, zero_division=0)),
-    }
+    metrics = _calculate_metrics(test_targets, predictions)
 
     return {
         "majority_class": majority_class,
         "predictions": predictions,
         "metrics": metrics,
+    }
+
+
+def run_market_direction_baseline(test_data: pd.DataFrame) -> dict:
+    """Predict that the next day follows the current day's direction."""
+
+    test_targets = _read_targets(test_data, "Test")
+
+    if "return_1d" not in test_data.columns:
+        raise BaselineError("Test data must contain return_1d.")
+
+    try:
+        daily_returns = pd.to_numeric(test_data["return_1d"], errors="raise")
+    except (TypeError, ValueError) as error:
+        raise BaselineError("Test return_1d must contain numbers.") from error
+
+    if daily_returns.isna().any():
+        raise BaselineError("Test return_1d must not contain missing values.")
+
+    if daily_returns.isin([float("inf"), float("-inf")]).any():
+        raise BaselineError("Test return_1d must contain finite numbers.")
+
+    predictions = (daily_returns > 0).astype("int64")
+    predictions.name = "market_direction_prediction"
+
+    return {
+        "predictions": predictions,
+        "metrics": _calculate_metrics(test_targets, predictions),
     }
