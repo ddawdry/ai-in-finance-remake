@@ -2,7 +2,11 @@ import pandas as pd
 import pytest
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
-from ml.classifier import ClassifierError, train_logistic_regression
+from ml.classifier import (
+    ClassifierError,
+    train_logistic_regression,
+    train_random_forest,
+)
 from ml.dataset import FEATURE_COLUMNS
 
 
@@ -146,6 +150,102 @@ def test_training_data_needs_both_target_classes():
 
     with pytest.raises(ClassifierError, match="must contain both 0 and 1"):
         train_logistic_regression(
+            training_data,
+            model_data(8, start="2025-04-01"),
+        )
+
+
+def test_random_forest_creates_one_prediction_per_test_row():
+    test_data = model_data(8, start="2025-04-01")
+
+    result = train_random_forest(model_data(), test_data)
+
+    assert len(result["predictions"]) == len(test_data)
+    assert result["predictions"].index.equals(test_data.index)
+    assert result["predictions"].name == "random_forest_prediction"
+    assert set(result["predictions"].unique()).issubset({0, 1})
+
+
+def test_random_forest_uses_expected_settings():
+    result = train_random_forest(
+        model_data(), model_data(8, start="2025-04-01")
+    )
+    model = result["model"]
+
+    assert model.n_estimators == 200
+    assert model.max_depth == 6
+    assert model.random_state == 42
+    assert model.n_jobs == 1
+
+
+def test_random_forest_fits_training_rows_only():
+    training_data = model_data(30)
+    test_data = model_data(8, start="2025-04-01", feature_offset=1000)
+
+    result = train_random_forest(training_data, test_data)
+
+    assert all(
+        len(sample_indexes) == len(training_data)
+        for sample_indexes in result["model"].estimators_samples_
+    )
+
+
+def test_random_forest_metrics_match_predictions():
+    test_data = model_data(8, start="2025-04-01")
+
+    result = train_random_forest(model_data(), test_data)
+    predictions = result["predictions"]
+    targets = test_data["target_up"]
+
+    assert result["metrics"] == pytest.approx(
+        {
+            "accuracy": accuracy_score(targets, predictions),
+            "precision": precision_score(targets, predictions, zero_division=0),
+            "recall": recall_score(targets, predictions, zero_division=0),
+            "f1": f1_score(targets, predictions, zero_division=0),
+        }
+    )
+
+
+def test_random_forest_is_repeatable():
+    training_data = model_data()
+    test_data = model_data(8, start="2025-04-01")
+
+    first = train_random_forest(training_data, test_data)
+    second = train_random_forest(training_data, test_data)
+
+    pd.testing.assert_series_equal(first["predictions"], second["predictions"])
+    assert first["metrics"] == second["metrics"]
+
+
+def test_random_forest_does_not_change_original_data():
+    training_data = model_data()
+    test_data = model_data(8, start="2025-04-01")
+    training_before = training_data.copy(deep=True)
+    test_before = test_data.copy(deep=True)
+
+    train_random_forest(training_data, test_data)
+
+    pd.testing.assert_frame_equal(training_data, training_before)
+    pd.testing.assert_frame_equal(test_data, test_before)
+
+
+def test_random_forest_rejects_missing_feature():
+    training_data = model_data().drop(columns=FEATURE_COLUMNS[0])
+
+    with pytest.raises(ClassifierError, match="missing features"):
+        train_random_forest(
+            training_data,
+            model_data(8, start="2025-04-01"),
+        )
+
+
+def test_random_forest_needs_both_target_classes():
+    training_data = model_data()
+    training_data["target_up"] = 0
+
+    with pytest.raises(ClassifierError, match="must contain both 0 and 1"):
+        train_random_forest(
             training_data,
             model_data(8, start="2025-04-01"),
         )

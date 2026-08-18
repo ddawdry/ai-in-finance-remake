@@ -1,8 +1,9 @@
-"""Train and score the first direction classifier."""
+"""Train and score direction classifiers."""
 
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 
 from ml.config import DEFAULT_CONFIG, ModelConfig
@@ -54,6 +55,17 @@ def _read_targets(data: pd.DataFrame, label: str) -> pd.Series:
     return targets.astype("int64")
 
 
+def _calculate_metrics(targets: pd.Series, predictions: pd.Series) -> dict:
+    return {
+        "accuracy": float(accuracy_score(targets, predictions)),
+        "precision": float(
+            precision_score(targets, predictions, zero_division=0)
+        ),
+        "recall": float(recall_score(targets, predictions, zero_division=0)),
+        "f1": float(f1_score(targets, predictions, zero_division=0)),
+    }
+
+
 def train_logistic_regression(
     training_data: pd.DataFrame,
     test_data: pd.DataFrame,
@@ -86,18 +98,46 @@ def train_logistic_regression(
         name="logistic_prediction",
     )
 
-    metrics = {
-        "accuracy": float(accuracy_score(test_targets, predictions)),
-        "precision": float(
-            precision_score(test_targets, predictions, zero_division=0)
-        ),
-        "recall": float(recall_score(test_targets, predictions, zero_division=0)),
-        "f1": float(f1_score(test_targets, predictions, zero_division=0)),
-    }
-
     return {
         "model": model,
         "scaler": scaler,
         "predictions": predictions,
-        "metrics": metrics,
+        "metrics": _calculate_metrics(test_targets, predictions),
+    }
+
+
+def train_random_forest(
+    training_data: pd.DataFrame,
+    test_data: pd.DataFrame,
+    config: ModelConfig = DEFAULT_CONFIG,
+) -> dict:
+    """Fit Random Forest on training data and score test predictions."""
+
+    training_features = _read_features(training_data, "Training")
+    test_features = _read_features(test_data, "Test")
+    training_targets = _read_targets(training_data, "Training")
+    test_targets = _read_targets(test_data, "Test")
+
+    if training_targets.nunique() < 2:
+        raise ClassifierError("Training targets must contain both 0 and 1.")
+
+    model = RandomForestClassifier(
+        n_estimators=200,
+        max_depth=6,
+        random_state=config.random_seed,
+        n_jobs=1,
+    )
+    model.fit(training_features, training_targets)
+
+    predictions = pd.Series(
+        model.predict(test_features),
+        index=test_data.index.copy(),
+        dtype="int64",
+        name="random_forest_prediction",
+    )
+
+    return {
+        "model": model,
+        "predictions": predictions,
+        "metrics": _calculate_metrics(test_targets, predictions),
     }
