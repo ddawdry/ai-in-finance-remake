@@ -44,6 +44,27 @@ def test_predictions_only_contain_zero_and_one():
     assert set(result["predictions"].unique()).issubset({0, 1})
 
 
+def test_logistic_returns_one_up_probability_per_test_row():
+    test_data = model_data(8, start="2025-04-01")
+
+    result = train_logistic_regression(model_data(), test_data)
+    probabilities = result["probabilities"]
+
+    assert len(probabilities) == len(test_data)
+    assert probabilities.index.equals(test_data.index)
+    assert probabilities.name == "logistic_up_probability"
+    assert probabilities.between(0, 1).all()
+
+
+def test_logistic_direction_is_kept_separate_from_probability():
+    result = train_logistic_regression(
+        model_data(), model_data(8, start="2025-04-01")
+    )
+
+    assert result["predictions"].dtype == "int64"
+    assert result["probabilities"].dtype == "float64"
+
+
 def test_scaler_is_fitted_on_training_features_only():
     training_data = model_data()
     test_data = model_data(8, start="2025-04-01", feature_offset=1000)
@@ -83,6 +104,9 @@ def test_same_data_gives_repeatable_results():
     second = train_logistic_regression(training_data, test_data)
 
     pd.testing.assert_series_equal(first["predictions"], second["predictions"])
+    pd.testing.assert_series_equal(
+        first["probabilities"], second["probabilities"]
+    )
     assert first["metrics"] == second["metrics"]
 
 
@@ -178,6 +202,27 @@ def test_random_forest_uses_expected_settings():
     assert model.n_jobs == 1
 
 
+def test_random_forest_returns_one_up_probability_per_test_row():
+    test_data = model_data(8, start="2025-04-01")
+
+    result = train_random_forest(model_data(), test_data)
+    probabilities = result["probabilities"]
+
+    assert len(probabilities) == len(test_data)
+    assert probabilities.index.equals(test_data.index)
+    assert probabilities.name == "random_forest_up_probability"
+    assert probabilities.between(0, 1).all()
+
+
+def test_random_forest_direction_is_kept_separate_from_probability():
+    result = train_random_forest(
+        model_data(), model_data(8, start="2025-04-01")
+    )
+
+    assert result["predictions"].dtype == "int64"
+    assert result["probabilities"].dtype == "float64"
+
+
 def test_random_forest_fits_training_rows_only():
     training_data = model_data(30)
     test_data = model_data(8, start="2025-04-01", feature_offset=1000)
@@ -215,6 +260,9 @@ def test_random_forest_is_repeatable():
     second = train_random_forest(training_data, test_data)
 
     pd.testing.assert_series_equal(first["predictions"], second["predictions"])
+    pd.testing.assert_series_equal(
+        first["probabilities"], second["probabilities"]
+    )
     assert first["metrics"] == second["metrics"]
 
 

@@ -97,11 +97,18 @@ def train_logistic_regression(
         dtype="int64",
         name="logistic_prediction",
     )
+    up_class_index = list(model.classes_).index(1)
+    probabilities = pd.Series(
+        model.predict_proba(scaled_test)[:, up_class_index],
+        index=test_data.index.copy(),
+        name="logistic_up_probability",
+    )
 
     return {
         "model": model,
         "scaler": scaler,
         "predictions": predictions,
+        "probabilities": probabilities,
         "metrics": _calculate_metrics(test_targets, predictions),
     }
 
@@ -135,9 +142,16 @@ def train_random_forest(
         dtype="int64",
         name="random_forest_prediction",
     )
+    up_class_index = list(model.classes_).index(1)
+    probabilities = pd.Series(
+        model.predict_proba(test_features)[:, up_class_index],
+        index=test_data.index.copy(),
+        name="random_forest_up_probability",
+    )
 
     return {
         "model": model,
         "predictions": predictions,
+        "probabilities": probabilities,
         "metrics": _calculate_metrics(test_targets, predictions),
     }
