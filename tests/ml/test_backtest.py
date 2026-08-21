@@ -63,6 +63,64 @@ def test_returns_are_compounded():
     )
 
 
+def test_default_cost_is_charged_when_entering_and_leaving():
+    result = run_direction_backtest(
+        price_data([100, 110, 121, 120]), direction_predictions([0, 1, 0])
+    )
+
+    assert result["trading_cost"] == 0.001
+    assert result["daily"]["position_changed"].tolist() == [False, True, True]
+    assert result["daily"]["trading_cost"].tolist() == [0.0, 0.001, 0.001]
+
+
+def test_cost_is_not_charged_when_position_stays_the_same():
+    result = run_direction_backtest(
+        price_data([100, 110, 121, 120]), direction_predictions([1, 1, 1])
+    )
+
+    assert result["daily"]["position_changed"].tolist() == [True, False, False]
+    assert result["daily"]["trading_cost"].tolist() == [0.001, 0.0, 0.0]
+
+
+def test_custom_cost_reduces_the_daily_strategy_return():
+    result = run_direction_backtest(
+        price_data([100, 110, 121]),
+        direction_predictions([1, 0]),
+        trading_cost=0.01,
+    )
+
+    assert result["daily"]["strategy_return"].tolist() == pytest.approx(
+        [0.10, 0.0]
+    )
+    assert result["daily"]["strategy_return_after_costs"].tolist() == (
+        pytest.approx([0.09, -0.01])
+    )
+
+
+def test_results_report_returns_before_and_after_costs():
+    result = run_direction_backtest(
+        price_data([100, 110, 121]),
+        direction_predictions([1, 0]),
+        trading_cost=0.01,
+    )
+
+    assert result["strategy_total_return_before_costs"] == pytest.approx(0.10)
+    assert result["strategy_total_return_after_costs"] == pytest.approx(0.0791)
+    assert result["strategy_total_return_after_costs"] < result[
+        "strategy_total_return_before_costs"
+    ]
+
+
+@pytest.mark.parametrize("bad_cost", [-0.01, 1, 1.5, "0.001", True, None])
+def test_bad_trading_cost_is_rejected(bad_cost):
+    with pytest.raises(BacktestError, match="Trading cost must be a number"):
+        run_direction_backtest(
+            price_data([100, 110]),
+            direction_predictions([1]),
+            trading_cost=bad_cost,
+        )
+
+
 def test_original_data_is_not_changed():
     prices = price_data([100, 110, 99])
     predictions = direction_predictions([1, 0])
