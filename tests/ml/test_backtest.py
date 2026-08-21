@@ -1,7 +1,11 @@
 import pandas as pd
 import pytest
 
-from ml.backtest import BacktestError, run_direction_backtest
+from ml.backtest import (
+    BacktestError,
+    calculate_performance_metrics,
+    run_direction_backtest,
+)
 
 
 def price_data(closes):
@@ -109,6 +113,85 @@ def test_results_report_returns_before_and_after_costs():
     assert result["strategy_total_return_after_costs"] < result[
         "strategy_total_return_before_costs"
     ]
+
+
+def test_performance_metrics_calculate_total_and_annualised_return():
+    returns = pd.Series([0.10, -0.10])
+
+    metrics = calculate_performance_metrics(
+        returns, trading_days_per_year=2
+    )
+
+    assert metrics["total_return"] == pytest.approx(-0.01)
+    assert metrics["annualised_return"] == pytest.approx(-0.01)
+
+
+def test_performance_metrics_annualise_volatility():
+    returns = pd.Series([0.01, -0.01])
+
+    metrics = calculate_performance_metrics(
+        returns, trading_days_per_year=2
+    )
+
+    assert metrics["annualised_volatility"] == pytest.approx(0.02)
+
+
+def test_maximum_drawdown_includes_the_starting_value():
+    returns = pd.Series([0.10, -0.20, 0.05])
+
+    metrics = calculate_performance_metrics(returns)
+
+    assert metrics["maximum_drawdown"] == pytest.approx(-0.20)
+
+
+def test_sharpe_ratio_uses_the_risk_free_rate():
+    returns = pd.Series([0.01, 0.03])
+
+    without_risk_free = calculate_performance_metrics(
+        returns, trading_days_per_year=2, risk_free_rate=0.0
+    )
+    with_risk_free = calculate_performance_metrics(
+        returns, trading_days_per_year=2, risk_free_rate=0.02
+    )
+
+    assert with_risk_free["sharpe_ratio"] < without_risk_free["sharpe_ratio"]
+
+
+def test_backtest_reports_metrics_and_assumptions():
+    result = run_direction_backtest(
+        price_data([100, 110, 99]),
+        direction_predictions([1, 0]),
+        trading_cost=0.002,
+        trading_days_per_year=250,
+        risk_free_rate=0.01,
+    )
+
+    assert result["assumptions"] == {
+        "trading_cost": 0.002,
+        "trading_days_per_year": 250,
+        "risk_free_rate": 0.01,
+    }
+    assert set(result["strategy_metrics_before_costs"]) == {
+        "total_return",
+        "annualised_return",
+        "annualised_volatility",
+        "maximum_drawdown",
+        "sharpe_ratio",
+    }
+    assert result["strategy_metrics_after_costs"]["total_return"] == (
+        pytest.approx(result["strategy_total_return_after_costs"])
+    )
+    assert result["buy_hold_metrics"]["total_return"] == pytest.approx(
+        result["buy_hold_total_return"]
+    )
+
+
+@pytest.mark.parametrize("bad_days", [0, -1, 252.5, "252", True, None])
+def test_bad_trading_days_assumption_is_rejected(bad_days):
+    with pytest.raises(BacktestError, match="Trading days per year"):
+        calculate_performance_metrics(
+            pd.Series([0.01, 0.02]), trading_days_per_year=bad_days
+        )
 
 
 @pytest.mark.parametrize("bad_cost", [-0.01, 1, 1.5, "0.001", True, None])
