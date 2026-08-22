@@ -64,7 +64,7 @@ Update `server/.env` with your own MongoDB connection and JWT secret. Do not com
 Update the market data:
 
 ```powershell
-python ml\model.py
+python -m ml.model
 ```
 
 Start the backend:
