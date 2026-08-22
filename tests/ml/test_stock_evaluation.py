@@ -74,6 +74,8 @@ def test_results_table_contains_each_stock_and_metric(fake_pipeline):
 
     assert result["results"].index.tolist() == ["AAPL", "MSFT"]
     assert result["results"].columns.tolist() == [
+        "asset_type",
+        "calendar",
         "dataset_rows",
         "prediction_rows",
         "accuracy",
@@ -83,6 +85,11 @@ def test_results_table_contains_each_stock_and_metric(fake_pipeline):
     ]
     assert result["results"]["dataset_rows"].tolist() == [4, 4]
     assert result["results"]["prediction_rows"].tolist() == [2, 2]
+    assert result["results"]["asset_type"].tolist() == ["stock", "stock"]
+    assert result["results"]["calendar"].tolist() == [
+        "exchange_days",
+        "exchange_days",
+    ]
 
 
 def test_cache_and_walk_forward_options_are_passed_on(fake_pipeline):

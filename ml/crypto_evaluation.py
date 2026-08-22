@@ -1,4 +1,4 @@
-"""Run the same walk-forward evaluation across several stocks."""
+"""Run the walk-forward evaluation across cryptocurrencies."""
 
 from dataclasses import replace
 from pathlib import Path
@@ -9,70 +9,60 @@ from ml.config import DEFAULT_CONFIG, ModelConfig
 from ml.data_cache import DEFAULT_CACHE_DIR, get_prices
 from ml.dataset import build_model_dataset
 from ml.split import DEFAULT_TRAIN_RATIO
+from ml.stock_evaluation import StockEvaluationError, _read_tickers
 from ml.walk_forward import DEFAULT_BLOCK_SIZE, run_walk_forward_evaluation
 
 
-DEFAULT_STOCK_TICKERS = ("AAPL", "MSFT", "GOOGL", "AMZN")
+DEFAULT_CRYPTO_TICKERS = (
+    "BTC-USD",
+    "ETH-USD",
+    "SOL-USD",
+    "ADA-USD",
+    "DOGE-USD",
+)
 
 
-class StockEvaluationError(ValueError):
-    """Raised when a stock comparison cannot use the given tickers."""
+class CryptoEvaluationError(ValueError):
+    """Raised when a crypto comparison cannot use the given tickers."""
 
 
-def _read_tickers(tickers) -> tuple[str, ...]:
-    if isinstance(tickers, str):
-        raise StockEvaluationError("Tickers must be given as a list or tuple.")
-
+def _read_crypto_tickers(tickers) -> tuple[str, ...]:
     try:
-        values = tuple(tickers)
-    except TypeError as error:
-        raise StockEvaluationError(
-            "Tickers must be given as a list or tuple."
-        ) from error
-
-    if not values:
-        raise StockEvaluationError("At least one ticker is required.")
-
-    if any(not isinstance(ticker, str) or not ticker.strip() for ticker in values):
-        raise StockEvaluationError("Every ticker must be a non-empty name.")
-
-    cleaned = tuple(ticker.strip().upper() for ticker in values)
-    if len(set(cleaned)) != len(cleaned):
-        raise StockEvaluationError("Tickers must not contain duplicates.")
-
-    return cleaned
+        return _read_tickers(tickers)
+    except StockEvaluationError as error:
+        raise CryptoEvaluationError(str(error)) from error
 
 
-def evaluate_stocks(
-    tickers=DEFAULT_STOCK_TICKERS,
+def evaluate_crypto(
+    tickers=DEFAULT_CRYPTO_TICKERS,
     config: ModelConfig = DEFAULT_CONFIG,
     initial_train_ratio: float = DEFAULT_TRAIN_RATIO,
     block_size: int = DEFAULT_BLOCK_SIZE,
     refresh: bool = False,
     cache_dir: Path = DEFAULT_CACHE_DIR,
 ) -> dict:
-    """Evaluate each stock with the same model and date settings."""
+    """Evaluate each cryptocurrency without removing weekend dates."""
 
-    stock_tickers = _read_tickers(tickers)
+    crypto_tickers = _read_crypto_tickers(tickers)
     evaluations = {}
     rows = []
 
-    for ticker in stock_tickers:
-        stock_config = replace(config, ticker=ticker)
-        prices = get_prices(stock_config, refresh=refresh, cache_dir=cache_dir)
+    for ticker in crypto_tickers:
+        crypto_config = replace(config, ticker=ticker)
+        prices = get_prices(crypto_config, refresh=refresh, cache_dir=cache_dir)
         dataset = build_model_dataset(prices)
         evaluation = run_walk_forward_evaluation(
             dataset,
             initial_train_ratio=initial_train_ratio,
             block_size=block_size,
-            config=stock_config,
+            config=crypto_config,
         )
         evaluations[ticker] = evaluation
         rows.append(
             {
                 "ticker": ticker,
-                "asset_type": "stock",
-                "calendar": "exchange_days",
+                "asset_type": "crypto",
+                "calendar": "seven_days",
                 "dataset_rows": len(dataset),
                 "prediction_rows": len(evaluation["predictions"]),
                 **evaluation["metrics"],
@@ -82,8 +72,9 @@ def evaluate_stocks(
     results = pd.DataFrame(rows).set_index("ticker")
     return {
         "settings": {
-            "asset_type": "stock",
-            "calendar": "exchange_days",
+            "asset_type": "crypto",
+            "calendar": "seven_days",
+            "calendar_days_per_year": 365,
             "start_date": config.start_date,
             "end_date": config.end_date,
             "interval": config.interval,
