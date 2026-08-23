@@ -27,6 +27,9 @@ function isValidModelResult(value) {
     typeof value.ticker !== "string" ||
     !["stock", "crypto"].includes(value.asset_type) ||
     !hasNumbers(value.metrics, MODEL_METRICS) ||
+    !isObject(value.baseline) ||
+    value.baseline.name !== "majority_class" ||
+    !hasNumbers(value.baseline.metrics, MODEL_METRICS) ||
     !Array.isArray(value.predictions)
   ) {
     return false;

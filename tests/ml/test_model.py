@@ -36,6 +36,14 @@ def test_run_model_uses_the_direction_pipeline(monkeypatch, tmp_path):
         calls["walk_forward"] = (model_dataset, config)
         return evaluation
 
+    def fake_split(model_dataset):
+        calls["split"] = model_dataset
+        return model_dataset.iloc[:1], model_dataset.iloc[1:]
+
+    def fake_baseline(training_data, test_data):
+        calls["baseline"] = (training_data, test_data)
+        return {"metrics": evaluation["metrics"]}
+
     def fake_backtest(prices, predictions, trading_days_per_year):
         calls["backtest"] = (prices, predictions, trading_days_per_year)
         return backtest
@@ -65,6 +73,8 @@ def test_run_model_uses_the_direction_pipeline(monkeypatch, tmp_path):
     monkeypatch.setattr(
         "ml.model.run_walk_forward_evaluation", fake_walk_forward
     )
+    monkeypatch.setattr("ml.model.split_dataset", fake_split)
+    monkeypatch.setattr("ml.model.run_majority_baseline", fake_baseline)
     monkeypatch.setattr("ml.model.run_direction_backtest", fake_backtest)
     monkeypatch.setattr("ml.model.export_direction_results", fake_export)
     monkeypatch.setattr(
@@ -81,6 +91,7 @@ def test_run_model_uses_the_direction_pipeline(monkeypatch, tmp_path):
 
     assert calls["prices"] == (config, True, Path("cache"))
     assert calls["walk_forward"] == (dataset, config)
+    assert calls["split"] is dataset
     assert calls["backtest"][1:] == (evaluation["predictions"], 252)
     assert calls["export"][2:] == ("AAPL", "stock", tmp_path)
     assert calls["backtest_export"] == (backtest, "AAPL", "stock", tmp_path)
@@ -104,6 +115,14 @@ def test_crypto_ticker_gets_crypto_label(monkeypatch, tmp_path):
     monkeypatch.setattr(
         "ml.model.run_walk_forward_evaluation",
         lambda model_dataset, config: evaluation,
+    )
+    monkeypatch.setattr(
+        "ml.model.split_dataset",
+        lambda model_dataset: (model_dataset.iloc[:1], model_dataset.iloc[1:]),
+    )
+    monkeypatch.setattr(
+        "ml.model.run_majority_baseline",
+        lambda training_data, test_data: {"metrics": evaluation["metrics"]},
     )
     monkeypatch.setattr(
         "ml.model.run_direction_backtest",

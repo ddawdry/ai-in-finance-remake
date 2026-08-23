@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from ml.backtest import run_direction_backtest
+from ml.baseline import run_majority_baseline
 from ml.config import DEFAULT_CONFIG, ModelConfig
 from ml.data_cache import DEFAULT_CACHE_DIR, get_prices
 from ml.dataset import build_model_dataset
@@ -11,6 +12,7 @@ from ml.result_export import (
     export_backtest_results,
     export_direction_results,
 )
+from ml.split import split_dataset
 from ml.walk_forward import run_walk_forward_evaluation
 
 
@@ -25,6 +27,12 @@ def run_model(
     prices = get_prices(config, refresh=refresh, cache_dir=cache_dir)
     dataset = build_model_dataset(prices)
     evaluation = run_walk_forward_evaluation(dataset, config=config)
+    training_data, test_data = split_dataset(dataset)
+    baseline = run_majority_baseline(training_data, test_data)
+    export_evaluation = {
+        **evaluation,
+        "baseline_metrics": baseline["metrics"],
+    }
     asset_type = "crypto" if config.ticker.upper().endswith("-USD") else "stock"
     trading_days_per_year = 365 if asset_type == "crypto" else 252
     backtest = run_direction_backtest(
@@ -34,7 +42,7 @@ def run_model(
     )
     paths = export_direction_results(
         dataset,
-        evaluation,
+        export_evaluation,
         ticker=config.ticker,
         asset_type=asset_type,
         output_dir=output_dir,

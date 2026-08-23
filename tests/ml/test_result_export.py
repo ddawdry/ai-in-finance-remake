@@ -28,6 +28,12 @@ def model_evaluation():
             "recall": 1.0,
             "f1": 2 / 3,
         },
+        "baseline_metrics": {
+            "accuracy": 0.55,
+            "precision": 0.55,
+            "recall": 1.0,
+            "f1": 0.71,
+        },
     }
 
 
@@ -95,6 +101,8 @@ def test_json_contains_metrics_and_basic_details(tmp_path):
     assert result["start_date"] == "2025-01-02"
     assert result["end_date"] == "2025-01-04"
     assert result["metrics"]["accuracy"] == pytest.approx(2 / 3)
+    assert result["baseline"]["name"] == "majority_class"
+    assert result["baseline"]["metrics"]["accuracy"] == 0.55
 
 
 def test_model_json_contains_predictions_and_metrics(tmp_path):

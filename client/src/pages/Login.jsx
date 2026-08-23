@@ -1,100 +1,65 @@
 import { useState } from "react";
 import axios from "axios";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 export default function Login({ setLoggedIn }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const handleLogin = async () => {
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/login",
-        { email, password }
-      );
-
-      localStorage.setItem("token", res.data.token);
+      const response = await axios.post(`${API_URL}/api/auth/login`, {
+        email,
+        password,
+      });
+      localStorage.setItem("token", response.data.token);
       setLoggedIn(true);
-
     } catch {
-      alert("Login failed");
+      setError("Login failed. Check your email and password.");
     }
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
+    <main className="login-page">
+      <form className="login-panel" onSubmit={handleSubmit}>
+        <div className="login-brand">
+          <span className="brand-mark">AF</span>
+          <div>
+            <h1>AI Finance</h1>
+            <p>Direction research dashboard</p>
+          </div>
+        </div>
 
-        <h1 style={styles.title}>AI Finance</h1>
-        <p style={styles.subtitle}>Smart Market Predictions</p>
-
+        <label htmlFor="email">Email</label>
         <input
-          style={styles.input}
+          id="email"
           type="email"
-          placeholder="Email"
-          onChange={(e) => setEmail(e.target.value)}
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          autoComplete="email"
+          required
         />
 
+        <label htmlFor="password">Password</label>
         <input
-          style={styles.input}
+          id="password"
           type="password"
-          placeholder="Password"
-          onChange={(e) => setPassword(e.target.value)}
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="current-password"
+          required
         />
 
-        <button style={styles.button} onClick={handleLogin}>
-          Login
-        </button>
+        {error && <p className="login-error" role="alert">{error}</p>}
 
-      </div>
-    </div>
+        <button type="submit">Log in</button>
+        <p className="login-note">Learning project. Not financial advice.</p>
+      </form>
+    </main>
   );
 }
-
-const styles = {
-  page: {
-    height: "100vh",
-    background: "linear-gradient(135deg, #020617, #0f172a)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  card: {
-    backgroundColor: "#020617",
-    padding: "40px",
-    borderRadius: "12px",
-    width: "320px",
-    boxShadow: "0 0 30px rgba(56,189,248,0.2)",
-    border: "1px solid #1e293b",
-    display: "flex",
-    flexDirection: "column",
-  },
-  title: {
-    color: "#38bdf8",
-    marginBottom: "5px",
-    textAlign: "center",
-  },
-  subtitle: {
-    color: "#94a3b8",
-    fontSize: "0.9rem",
-    marginBottom: "25px",
-    textAlign: "center",
-  },
-  input: {
-    padding: "10px",
-    marginBottom: "15px",
-    borderRadius: "6px",
-    border: "1px solid #1e293b",
-    backgroundColor: "#0f172a",
-    color: "white",
-  },
-  button: {
-    padding: "10px",
-    backgroundColor: "#38bdf8",
-    border: "none",
-    borderRadius: "6px",
-    fontWeight: "bold",
-    cursor: "pointer",
-    color: "#020617",
-    transition: "0.2s",
-  },
-};

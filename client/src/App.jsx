@@ -1,71 +1,145 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 
+import "./App.css";
 import Header from "./components/header";
-import Sidebar from "./components/Sidebar";
-import ChartPanel from "./components/ChartPanel";
 import DecisionPanel from "./components/DecisionPanel";
 import Login from "./pages/login";
+import {
+  formatDate,
+  formatPercent,
+  getLatestPrediction,
+} from "./modelResults";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(() =>
+  const [loggedIn, setLoggedIn] = useState(() => (
     Boolean(localStorage.getItem("token"))
-  );
-  const [market, setMarket] = useState("AAPL");
-  const [marketData, setMarketData] = useState(null);
-  const [currency, setCurrency] = useState("USD"); // 💱 NEW
+  ));
+  const [modelResult, setModelResult] = useState(null);
+  const [status, setStatus] = useState("loading");
+  const [reloadCount, setReloadCount] = useState(0);
 
   useEffect(() => {
-    if (!loggedIn) return;
+    if (!loggedIn) return undefined;
 
-    const fetchData = async () => {
-      try {
-        const res = await axios.get("http://localhost:5000/api/market-data");
-        setMarketData(res.data);
-      } catch (err) {
-        console.error(err);
-      }
+    let cancelled = false;
+
+    axios.get(`${API_URL}/api/model-results`)
+      .then((response) => {
+        if (!cancelled) {
+          setModelResult(response.data);
+          setStatus("ready");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setModelResult(null);
+          setStatus("error");
+        }
+      });
+
+    return () => {
+      cancelled = true;
     };
-
-    fetchData();
-  }, [loggedIn]);
+  }, [loggedIn, reloadCount]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     setLoggedIn(false);
-    setMarketData(null);
+    setModelResult(null);
   };
 
   if (!loggedIn) {
     return <Login setLoggedIn={setLoggedIn} />;
   }
 
-  if (!marketData) {
-    return <div style={{ padding: "20px" }}>Loading...</div>;
-  }
+  return (
+    <div className="app-shell">
+      <Header onLogout={handleLogout} />
 
-  const selectedData = marketData[market];
+      {status === "loading" && (
+        <main className="state-page" aria-live="polite">
+          <div className="loading-mark" />
+          <p>Loading model results...</p>
+        </main>
+      )}
+
+      {status === "error" && (
+        <main className="state-page" role="alert">
+          <h2>Results are not available</h2>
+          <p>Run the model and make sure the server is running.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setStatus("loading");
+              setReloadCount((count) => count + 1);
+            }}
+          >
+            Try again
+          </button>
+        </main>
+      )}
+
+      {status === "ready" && modelResult && (
+        <DashboardContent result={modelResult} />
+      )}
+    </div>
+  );
+}
+
+function DashboardContent({ result }) {
+  const latest = getLatestPrediction(result);
+  const recent = result.predictions.slice(-10).reverse();
 
   return (
-    <>
-      {/* Pass setCurrency Here */}
-      <Header onLogout={handleLogout} setCurrency={setCurrency} />
-
-      <div className="container">
-        <Sidebar market={market} setMarket={setMarket} />
-
-        {/* Pass currency Here */}
-        <ChartPanel
-          market={market}
-          data={selectedData}
-          currency={currency}
-        />
-
-        <DecisionPanel
-          data={selectedData}
-          currency={currency}
-        />
+    <main className="dashboard">
+      <div className="dashboard-heading">
+        <div>
+          <p className="asset-type">{result.asset_type}</p>
+          <h1>{result.ticker}</h1>
+        </div>
+        <div className="as-of">
+          <span>Latest test date</span>
+          <strong>{formatDate(latest.date)}</strong>
+        </div>
       </div>
-    </>
+
+      <DecisionPanel result={result} prediction={latest} />
+
+      <section className="history-section" aria-labelledby="history-title">
+        <div className="section-heading">
+          <h2 id="history-title">Recent direction results</h2>
+          <span>{result.model.replaceAll("_", " ")}</span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Actual</th>
+                <th>Predicted</th>
+                <th>Up probability</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map((row) => (
+                <tr key={row.date}>
+                  <td>{formatDate(row.date)}</td>
+                  <td className={`direction-text ${row.actual_direction}`}>
+                    {row.actual_direction}
+                  </td>
+                  <td className={`direction-text ${row.predicted_direction}`}>
+                    {row.predicted_direction}
+                  </td>
+                  <td>{formatPercent(row.up_probability)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
   );
 }

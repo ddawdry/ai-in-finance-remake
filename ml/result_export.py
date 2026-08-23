@@ -65,9 +65,11 @@ def export_direction_results(
         predictions = evaluation["predictions"]
         probabilities = evaluation["probabilities"]
         raw_metrics = evaluation["metrics"]
+        raw_baseline_metrics = evaluation["baseline_metrics"]
     except KeyError as error:
         raise ResultExportError(
-            "Evaluation must contain predictions, probabilities, and metrics."
+            "Evaluation must contain predictions, probabilities, model metrics, "
+            "and baseline metrics."
         ) from error
 
     if not isinstance(predictions, pd.Series) or predictions.empty:
@@ -85,6 +87,9 @@ def export_direction_results(
 
     try:
         metrics = {name: float(raw_metrics[name]) for name in METRIC_NAMES}
+        baseline_metrics = {
+            name: float(raw_baseline_metrics[name]) for name in METRIC_NAMES
+        }
     except (KeyError, TypeError, ValueError) as error:
         raise ResultExportError(
             "Metrics must contain numeric accuracy, precision, recall, and f1."
@@ -118,6 +123,10 @@ def export_direction_results(
         "start_date": rows["date"].iloc[0],
         "end_date": rows["date"].iloc[-1],
         "metrics": metrics,
+        "baseline": {
+            "name": "majority_class",
+            "metrics": baseline_metrics,
+        },
     }
     with metrics_path.open("w", encoding="utf-8") as file:
         json.dump(metric_output, file, indent=2)

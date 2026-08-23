@@ -22,6 +22,15 @@ function modelResult() {
       recall: 0.7,
       f1: 0.65
     },
+    baseline: {
+      name: "majority_class",
+      metrics: {
+        accuracy: 0.55,
+        precision: 0.55,
+        recall: 1,
+        f1: 0.71
+      }
+    },
     predictions: [{
       date: "2025-01-02",
       ticker: "AAPL",
