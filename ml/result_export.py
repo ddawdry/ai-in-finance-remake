@@ -12,7 +12,16 @@ from ml.dataset import TARGET_COLUMN
 DEFAULT_RESULTS_DIR = Path(__file__).resolve().parents[1] / "data" / "results"
 PREDICTIONS_FILE = "direction_predictions.csv"
 METRICS_FILE = "model_metrics.json"
+MODEL_RESULTS_FILE = "model_results.json"
+BACKTEST_RESULTS_FILE = "backtest_results.json"
 METRIC_NAMES = ("accuracy", "precision", "recall", "f1")
+PERFORMANCE_NAMES = (
+    "total_return",
+    "annualised_return",
+    "annualised_volatility",
+    "maximum_drawdown",
+    "sharpe_ratio",
+)
 
 
 class ResultExportError(ValueError):
@@ -98,6 +107,7 @@ def export_direction_results(
     folder.mkdir(parents=True, exist_ok=True)
     predictions_path = folder / PREDICTIONS_FILE
     metrics_path = folder / METRICS_FILE
+    model_results_path = folder / MODEL_RESULTS_FILE
     rows.to_csv(predictions_path, index=False)
 
     metric_output = {
@@ -112,7 +122,73 @@ def export_direction_results(
     with metrics_path.open("w", encoding="utf-8") as file:
         json.dump(metric_output, file, indent=2)
 
+    model_output = {
+        **metric_output,
+        "predictions": rows.to_dict(orient="records"),
+    }
+    with model_results_path.open("w", encoding="utf-8") as file:
+        json.dump(model_output, file, indent=2)
+
     return {
         "predictions_path": predictions_path,
         "metrics_path": metrics_path,
+        "model_results_path": model_results_path,
     }
+
+
+def export_backtest_results(
+    backtest: dict,
+    ticker: str,
+    asset_type: str,
+    output_dir: Path = DEFAULT_RESULTS_DIR,
+) -> Path:
+    """Save the backtest assumptions and summary metrics as JSON."""
+
+    safe_ticker = _read_name(ticker, "Ticker").upper()
+    safe_asset_type = _read_name(asset_type, "Asset type").lower()
+    if safe_asset_type not in {"stock", "crypto"}:
+        raise ResultExportError("Asset type must be stock or crypto.")
+
+    try:
+        assumptions = {
+            "trading_cost": float(backtest["assumptions"]["trading_cost"]),
+            "trading_days_per_year": int(
+                backtest["assumptions"]["trading_days_per_year"]
+            ),
+            "risk_free_rate": float(
+                backtest["assumptions"]["risk_free_rate"]
+            ),
+        }
+        metric_groups = {
+            "strategy_before_costs": backtest[
+                "strategy_metrics_before_costs"
+            ],
+            "strategy_after_costs": backtest[
+                "strategy_metrics_after_costs"
+            ],
+            "buy_hold": backtest["buy_hold_metrics"],
+        }
+        metrics = {
+            group: {
+                name: float(values[name]) for name in PERFORMANCE_NAMES
+            }
+            for group, values in metric_groups.items()
+        }
+    except (KeyError, TypeError, ValueError) as error:
+        raise ResultExportError(
+            "Backtest must contain assumptions and performance metrics."
+        ) from error
+
+    output = {
+        "ticker": safe_ticker,
+        "asset_type": safe_asset_type,
+        "strategy": "up_prediction_only",
+        "assumptions": assumptions,
+        **metrics,
+    }
+    folder = Path(output_dir)
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / BACKTEST_RESULTS_FILE
+    with path.open("w", encoding="utf-8") as file:
+        json.dump(output, file, indent=2)
+    return path

@@ -3,7 +3,11 @@ import json
 import pandas as pd
 import pytest
 
-from ml.result_export import ResultExportError, export_direction_results
+from ml.result_export import (
+    ResultExportError,
+    export_backtest_results,
+    export_direction_results,
+)
 
 
 def model_dataset():
@@ -27,6 +31,26 @@ def model_evaluation():
     }
 
 
+def backtest_result():
+    metrics = {
+        "total_return": 0.1,
+        "annualised_return": 0.08,
+        "annualised_volatility": 0.2,
+        "maximum_drawdown": -0.15,
+        "sharpe_ratio": 0.5,
+    }
+    return {
+        "assumptions": {
+            "trading_cost": 0.001,
+            "trading_days_per_year": 252,
+            "risk_free_rate": 0.0,
+        },
+        "strategy_metrics_before_costs": metrics,
+        "strategy_metrics_after_costs": {**metrics, "total_return": 0.07},
+        "buy_hold_metrics": {**metrics, "total_return": 0.12},
+    }
+
+
 def test_export_creates_csv_and_json_files(tmp_path):
     paths = export_direction_results(
         model_dataset(), model_evaluation(), "AAPL", "stock", tmp_path
@@ -34,6 +58,7 @@ def test_export_creates_csv_and_json_files(tmp_path):
 
     assert paths["predictions_path"].is_file()
     assert paths["metrics_path"].is_file()
+    assert paths["model_results_path"].is_file()
 
 
 def test_csv_contains_direction_results_only(tmp_path):
@@ -70,6 +95,45 @@ def test_json_contains_metrics_and_basic_details(tmp_path):
     assert result["start_date"] == "2025-01-02"
     assert result["end_date"] == "2025-01-04"
     assert result["metrics"]["accuracy"] == pytest.approx(2 / 3)
+
+
+def test_model_json_contains_predictions_and_metrics(tmp_path):
+    paths = export_direction_results(
+        model_dataset(), model_evaluation(), "AAPL", "stock", tmp_path
+    )
+    with paths["model_results_path"].open(encoding="utf-8") as file:
+        result = json.load(file)
+
+    assert result["ticker"] == "AAPL"
+    assert len(result["predictions"]) == 3
+    assert result["predictions"][0] == {
+        "date": "2025-01-02",
+        "ticker": "AAPL",
+        "asset_type": "stock",
+        "actual_direction": "up",
+        "predicted_direction": "up",
+        "up_probability": 0.7,
+    }
+
+
+def test_backtest_json_contains_safe_summary_fields(tmp_path):
+    path = export_backtest_results(
+        backtest_result(), "AAPL", "stock", tmp_path
+    )
+    with path.open(encoding="utf-8") as file:
+        result = json.load(file)
+
+    assert result["ticker"] == "AAPL"
+    assert result["strategy"] == "up_prediction_only"
+    assert result["assumptions"]["trading_cost"] == 0.001
+    assert result["strategy_after_costs"]["total_return"] == 0.07
+    assert result["buy_hold"]["total_return"] == 0.12
+    assert "daily" not in result
+
+
+def test_invalid_backtest_summary_is_rejected(tmp_path):
+    with pytest.raises(ResultExportError, match="assumptions and performance"):
+        export_backtest_results({}, "AAPL", "stock", tmp_path)
 
 
 def test_export_does_not_change_input_data(tmp_path):

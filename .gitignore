@@ -37,6 +37,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .pytest-temp/
+.test-temp/
 
 # Downloaded market data
 /data/raw/*

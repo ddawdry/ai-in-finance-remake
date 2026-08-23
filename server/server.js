@@ -1,58 +1,29 @@
-const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors");
 require("dotenv").config();
 
-const fs = require("fs");
-const path = require("path");
+const { createApp } = require("./app");
 
-const authRoutes = require("./routes/auth");
-const authMiddleware = require("./middleware/authMiddleware");
+const PORT = Number(process.env.PORT) || 5000;
 
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Routes
-
-// Auth routes
-app.use("/api/auth", authRoutes);
-
-// Protected test route
-app.get("/api/protected", authMiddleware, (req, res) => {
-  res.json({ message: "You accessed a protected route!" });
-});
-
-// Market Data API
-app.get("/api/market-data", (req, res) => {
-  const filePath = path.join(__dirname, "../data/marketData.json");
-
-  fs.readFile(filePath, "utf8", (err, data) => {
-    if (err) {
-      console.error("Error reading marketData.json:", err);
-      return res.status(500).json({ error: "Failed to load market data" });
-    }
-
+async function startServer() {
+  if (process.env.MONGO_URI) {
     try {
-      const parsed = JSON.parse(data);
-      res.json(parsed);
-    } catch (parseErr) {
-      console.error("JSON parse error:", parseErr);
-      res.status(500).json({ error: "Invalid JSON format" });
+      await mongoose.connect(process.env.MONGO_URI);
+      console.log("MongoDB connected");
+    } catch (error) {
+      console.error("MongoDB connection failed");
     }
+  } else {
+    console.log("MongoDB connection skipped because MONGO_URI is not set");
+  }
+
+  return createApp().listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
   });
-});
+}
 
-// Database
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.log("MongoDB error:", err));
+if (require.main === module) {
+  startServer();
+}
 
-// Server
-const PORT = 5000;
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+module.exports = { startServer };
