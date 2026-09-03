@@ -5,7 +5,6 @@ import "./App.css";
 import Header from "./components/header";
 import BacktestPanel from "./components/BacktestPanel";
 import DecisionPanel from "./components/DecisionPanel";
-import Login from "./pages/login";
 import {
   formatDate,
   formatPercent,
@@ -15,22 +14,55 @@ import {
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(() => (
-    Boolean(localStorage.getItem("token"))
-  ));
   const [modelResult, setModelResult] = useState(null);
   const [backtestResult, setBacktestResult] = useState(null);
+  const [assets, setAssets] = useState([]);
+  const [selectedTicker, setSelectedTicker] = useState("");
   const [status, setStatus] = useState("loading");
   const [reloadCount, setReloadCount] = useState(0);
 
   useEffect(() => {
-    if (!loggedIn) return undefined;
-
     let cancelled = false;
 
+    axios.get(`${API_URL}/api/assets`)
+      .then((response) => {
+        if (!cancelled) {
+          const availableAssets = response.data.assets;
+          setAssets(availableAssets);
+          const readyAssets = availableAssets.filter((asset) => asset.available);
+          if (!readyAssets.length) {
+            setStatus("error");
+            return;
+          }
+          setSelectedTicker((current) => (
+            readyAssets.some((asset) => asset.ticker === current)
+              ? current
+              : (readyAssets.find((asset) => asset.ticker === "AAPL") ||
+                readyAssets[0]).ticker
+          ));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setModelResult(null);
+          setBacktestResult(null);
+          setStatus("error");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadCount]);
+
+  useEffect(() => {
+    if (!selectedTicker) return undefined;
+
+    let cancelled = false;
+    const ticker = encodeURIComponent(selectedTicker);
     Promise.all([
-      axios.get(`${API_URL}/api/model-results`),
-      axios.get(`${API_URL}/api/backtest-results`),
+      axios.get(`${API_URL}/api/model-results?ticker=${ticker}`),
+      axios.get(`${API_URL}/api/backtest-results?ticker=${ticker}`),
     ])
       .then(([modelResponse, backtestResponse]) => {
         if (!cancelled) {
@@ -50,22 +82,17 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [loggedIn, reloadCount]);
+  }, [selectedTicker, reloadCount]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setLoggedIn(false);
-    setModelResult(null);
-    setBacktestResult(null);
+  const handleSelectTicker = (ticker) => {
+    if (ticker === selectedTicker) return;
+    setStatus("loading");
+    setSelectedTicker(ticker);
   };
-
-  if (!loggedIn) {
-    return <Login setLoggedIn={setLoggedIn} />;
-  }
 
   return (
     <div className="app-shell">
-      <Header onLogout={handleLogout} />
+      <Header />
 
       {status === "loading" && (
         <main className="state-page" aria-live="polite">
@@ -94,23 +121,61 @@ export default function App() {
         <DashboardContent
           result={modelResult}
           backtest={backtestResult}
+          assets={assets}
+          selectedTicker={selectedTicker}
+          onSelectTicker={handleSelectTicker}
         />
       )}
     </div>
   );
 }
 
-function DashboardContent({ result, backtest }) {
+function DashboardContent({
+  result,
+  backtest,
+  assets,
+  selectedTicker,
+  onSelectTicker,
+}) {
   const latest = getLatestPrediction(result);
   const recent = result.predictions.slice(-10).reverse();
 
   return (
     <div className="dashboard-layout">
       <aside className="market-sidebar" aria-label="Dashboard navigation">
-        <div className="sidebar-section">
+        <div className="sidebar-section asset-section">
           <p className="sidebar-title">Markets</p>
           <p className="sidebar-group">Stocks</p>
-          <span className="ticker-link active">{result.ticker}</span>
+          {assets.filter((asset) => asset.asset_type === "stock").map((asset) => (
+            <button
+              type="button"
+              className={`ticker-link ${
+                asset.ticker === selectedTicker ? "active" : ""
+              }`}
+              onClick={() => onSelectTicker(asset.ticker)}
+              disabled={!asset.available}
+              title={asset.available ? asset.ticker : "Run the model to add results"}
+              key={asset.ticker}
+            >
+              {asset.ticker}
+            </button>
+          ))}
+
+          <p className="sidebar-group">Crypto</p>
+          {assets.filter((asset) => asset.asset_type === "crypto").map((asset) => (
+            <button
+              type="button"
+              className={`ticker-link ${
+                asset.ticker === selectedTicker ? "active" : ""
+              }`}
+              onClick={() => onSelectTicker(asset.ticker)}
+              disabled={!asset.available}
+              title={asset.available ? asset.ticker : "Run the model to add results"}
+              key={asset.ticker}
+            >
+              {asset.ticker.replace("-USD", "")}
+            </button>
+          ))}
         </div>
 
         <nav className="sidebar-section" aria-label="Page sections">

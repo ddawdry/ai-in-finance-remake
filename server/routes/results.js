@@ -4,6 +4,19 @@ const path = require("path");
 
 const MODEL_FILE = "model_results.json";
 const BACKTEST_FILE = "backtest_results.json";
+const SAFE_TICKER = /^[A-Z0-9._-]+$/;
+const SUPPORTED_ASSETS = [
+  { ticker: "AAPL", asset_type: "stock" },
+  { ticker: "MSFT", asset_type: "stock" },
+  { ticker: "TSLA", asset_type: "stock" },
+  { ticker: "GOOGL", asset_type: "stock" },
+  { ticker: "AMZN", asset_type: "stock" },
+  { ticker: "BTC-USD", asset_type: "crypto" },
+  { ticker: "ETH-USD", asset_type: "crypto" },
+  { ticker: "SOL-USD", asset_type: "crypto" },
+  { ticker: "ADA-USD", asset_type: "crypto" },
+  { ticker: "DOGE-USD", asset_type: "crypto" }
+];
 const MODEL_METRICS = ["accuracy", "precision", "recall", "f1"];
 const PERFORMANCE_METRICS = [
   "total_return",
@@ -75,31 +88,132 @@ function isValidBacktestResult(value) {
 function createResultsRouter({ resultsDir }) {
   const router = express.Router();
 
-  async function sendResult(res, fileName, label, validator) {
-    try {
-      const text = await fs.readFile(path.join(resultsDir, fileName), "utf8");
-      const result = JSON.parse(text);
-      if (!validator(result)) {
-        return res.status(500).json({ error: `${label} file is invalid` });
-      }
-      return res.json(result);
-    } catch (error) {
-      if (error.code === "ENOENT") {
-        return res.status(404).json({
-          error: `${label} are not available. Run the model first.`
-        });
-      }
-      return res.status(500).json({ error: `${label} file is invalid` });
-    }
+  function readTicker(req) {
+    if (req.query.ticker === undefined) return null;
+    const ticker = String(req.query.ticker).trim().toUpperCase();
+    return SAFE_TICKER.test(ticker) && ![".", ".."].includes(ticker)
+      ? ticker
+      : undefined;
   }
 
-  router.get("/model-results", (req, res) => (
-    sendResult(res, MODEL_FILE, "Model results", isValidModelResult)
-  ));
+  function resultPath(fileName, ticker) {
+    return ticker
+      ? path.join(resultsDir, ticker, fileName)
+      : path.join(resultsDir, fileName);
+  }
 
-  router.get("/backtest-results", (req, res) => (
-    sendResult(res, BACKTEST_FILE, "Backtest results", isValidBacktestResult)
-  ));
+  async function sendResult(res, fileName, label, validator, ticker = null) {
+    const locations = ticker ? [ticker, null] : [null];
+
+    for (const location of locations) {
+      try {
+        const text = await fs.readFile(resultPath(fileName, location), "utf8");
+        const result = JSON.parse(text);
+        if (!validator(result) || (ticker && result.ticker !== ticker)) {
+          return res.status(500).json({ error: `${label} file is invalid` });
+        }
+        return res.json(result);
+      } catch (error) {
+        if (error.code !== "ENOENT") {
+          return res.status(500).json({ error: `${label} file is invalid` });
+        }
+      }
+    }
+
+    return res.status(404).json({
+      error: `${label} are not available. Run the model first.`
+    });
+  }
+
+  router.get("/assets", async (_req, res) => {
+    const available = new Set();
+
+    try {
+      const entries = await fs.readdir(resultsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory() || !SAFE_TICKER.test(entry.name)) continue;
+
+        try {
+          const [modelText, backtestText] = await Promise.all([
+            fs.readFile(resultPath(MODEL_FILE, entry.name), "utf8"),
+            fs.readFile(resultPath(BACKTEST_FILE, entry.name), "utf8")
+          ]);
+          const model = JSON.parse(modelText);
+          const backtest = JSON.parse(backtestText);
+          if (
+            isValidModelResult(model) &&
+            isValidBacktestResult(backtest) &&
+            model.ticker === entry.name &&
+            backtest.ticker === entry.name &&
+            model.asset_type === backtest.asset_type
+          ) {
+            available.add(model.ticker);
+          }
+        } catch {
+          // Ignore incomplete asset folders.
+        }
+      }
+
+      if (!available.size) {
+        try {
+          const [modelText, backtestText] = await Promise.all([
+            fs.readFile(resultPath(MODEL_FILE, null), "utf8"),
+            fs.readFile(resultPath(BACKTEST_FILE, null), "utf8")
+          ]);
+          const model = JSON.parse(modelText);
+          const backtest = JSON.parse(backtestText);
+          if (
+            isValidModelResult(model) &&
+            isValidBacktestResult(backtest) &&
+            model.ticker === backtest.ticker &&
+            model.asset_type === backtest.asset_type
+          ) {
+            available.add(model.ticker);
+          }
+        } catch {
+          // The empty list tells the client that no results exist yet.
+        }
+      }
+
+      const assets = SUPPORTED_ASSETS.map((asset) => ({
+        ...asset,
+        available: available.has(asset.ticker)
+      }));
+      return res.json({ assets });
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        return res.json({
+          assets: SUPPORTED_ASSETS.map((asset) => ({
+            ...asset,
+            available: false
+          }))
+        });
+      }
+      return res.status(500).json({ error: "Asset list is not available" });
+    }
+  });
+
+  router.get("/model-results", (req, res) => {
+    const ticker = readTicker(req);
+    if (ticker === undefined) {
+      return res.status(400).json({ error: "Ticker is invalid" });
+    }
+    return sendResult(res, MODEL_FILE, "Model results", isValidModelResult, ticker);
+  });
+
+  router.get("/backtest-results", (req, res) => {
+    const ticker = readTicker(req);
+    if (ticker === undefined) {
+      return res.status(400).json({ error: "Ticker is invalid" });
+    }
+    return sendResult(
+      res,
+      BACKTEST_FILE,
+      "Backtest results",
+      isValidBacktestResult,
+      ticker
+    );
+  });
 
   return router;
 }

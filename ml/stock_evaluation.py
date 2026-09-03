@@ -12,7 +12,7 @@ from ml.split import DEFAULT_TRAIN_RATIO
 from ml.walk_forward import DEFAULT_BLOCK_SIZE, run_walk_forward_evaluation
 
 
-DEFAULT_STOCK_TICKERS = ("AAPL", "MSFT", "GOOGL", "AMZN")
+DEFAULT_STOCK_TICKERS = ("AAPL", "MSFT", "TSLA", "GOOGL", "AMZN")
 
 
 class StockEvaluationError(ValueError):

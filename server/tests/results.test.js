@@ -81,6 +81,12 @@ async function writeJson(fileName, value) {
   );
 }
 
+async function writeAssetJson(ticker, fileName, value) {
+  const assetDir = path.join(resultsDir, ticker);
+  await fs.mkdir(assetDir, { recursive: true });
+  await fs.writeFile(path.join(assetDir, fileName), JSON.stringify(value), "utf8");
+}
+
 async function removeResults() {
   await fs.rm(resultsDir, { recursive: true, force: true });
 }
@@ -124,6 +130,67 @@ test("returns valid model results", async () => {
 
   assert.equal(response.status, 200);
   assert.deepEqual(response.body, expected);
+});
+
+test("lists assets with complete result files", async () => {
+  const stockModel = modelResult();
+  const stockBacktest = backtestResult();
+  const cryptoModel = {
+    ...modelResult(),
+    ticker: "BTC-USD",
+    asset_type: "crypto",
+    predictions: modelResult().predictions.map((row) => ({
+      ...row,
+      ticker: "BTC-USD",
+      asset_type: "crypto"
+    }))
+  };
+  const cryptoBacktest = {
+    ...backtestResult(),
+    ticker: "BTC-USD",
+    asset_type: "crypto"
+  };
+  await writeAssetJson("AAPL", "model_results.json", stockModel);
+  await writeAssetJson("AAPL", "backtest_results.json", stockBacktest);
+  await writeAssetJson("BTC-USD", "model_results.json", cryptoModel);
+  await writeAssetJson("BTC-USD", "backtest_results.json", cryptoBacktest);
+
+  const response = await withServer((server) => requestJson(server, "/api/assets"));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    response.body.assets.find((asset) => asset.ticker === "AAPL"),
+    { ticker: "AAPL", asset_type: "stock", available: true }
+  );
+  assert.deepEqual(
+    response.body.assets.find((asset) => asset.ticker === "BTC-USD"),
+    { ticker: "BTC-USD", asset_type: "crypto", available: true }
+  );
+  assert.deepEqual(
+    response.body.assets.find((asset) => asset.ticker === "TSLA"),
+    { ticker: "TSLA", asset_type: "stock", available: false }
+  );
+});
+
+test("returns results for a selected ticker", async () => {
+  const expected = modelResult();
+  await writeAssetJson("AAPL", "model_results.json", expected);
+
+  const response = await withServer((server) => (
+    requestJson(server, "/api/model-results?ticker=AAPL")
+  ));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, expected);
+});
+
+test("rejects an unsafe ticker", async () => {
+  const response = await withServer((server) => (
+    requestJson(server, "/api/model-results?ticker=..%2FAAPL")
+  ));
+
+  assert.equal(response.status, 400);
+  assert.match(response.body.error, /invalid/i);
 });
 
 test("returns 404 when model results are missing", async () => {

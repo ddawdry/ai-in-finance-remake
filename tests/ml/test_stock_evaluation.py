@@ -50,7 +50,13 @@ def fake_pipeline(monkeypatch):
 
 
 def test_default_stock_list_is_small_and_fixed():
-    assert DEFAULT_STOCK_TICKERS == ("AAPL", "MSFT", "GOOGL", "AMZN")
+    assert DEFAULT_STOCK_TICKERS == (
+        "AAPL",
+        "MSFT",
+        "TSLA",
+        "GOOGL",
+        "AMZN",
+    )
 
 
 def test_every_stock_uses_the_same_settings(fake_pipeline):

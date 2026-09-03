@@ -161,6 +161,30 @@ html {
   text-decoration: none;
 }
 
+button.ticker-link {
+  width: 100%;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.ticker-link:disabled {
+  color: #4f6579;
+  cursor: not-allowed;
+}
+
+button.ticker-link:disabled::after {
+  width: 5px;
+  height: 5px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: #365069;
+  content: "";
+}
+
 .ticker-link.active,
 .sidebar-section a:hover {
   border-left-color: #0bb8ff;
@@ -556,6 +580,16 @@ tbody tr:last-child td {
     margin: 0;
   }
 
+  .asset-section {
+    max-width: 48%;
+    overflow-x: auto;
+  }
+
+  button.ticker-link {
+    width: auto;
+    border-bottom: 2px solid transparent;
+  }
+
   .sidebar-group,
   .sidebar-note {
     display: none;
@@ -598,6 +632,10 @@ tbody tr:last-child td {
   .advice-label,
   .market-sidebar .sidebar-title,
   .market-sidebar .ticker-link {
+    display: none;
+  }
+
+  .market-sidebar .asset-section {
     display: none;
   }
 
