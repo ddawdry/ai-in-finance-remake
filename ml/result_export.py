@@ -183,6 +183,15 @@ def export_backtest_results(
             }
             for group, values in metric_groups.items()
         }
+        daily = backtest["daily"]
+        curve = [
+            {
+                "date": date.strftime("%Y-%m-%d"),
+                "strategy_growth": float(row["strategy_growth_after_costs"]),
+                "buy_hold_growth": float(row["buy_hold_growth"]),
+            }
+            for date, row in daily.iterrows()
+        ]
     except (KeyError, TypeError, ValueError) as error:
         raise ResultExportError(
             "Backtest must contain assumptions and performance metrics."
@@ -193,6 +202,7 @@ def export_backtest_results(
         "asset_type": safe_asset_type,
         "strategy": "up_prediction_only",
         "assumptions": assumptions,
+        "curve": curve,
         **metrics,
     }
     folder = Path(output_dir)

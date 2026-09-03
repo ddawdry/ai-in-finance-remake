@@ -58,6 +58,14 @@ function isValidBacktestResult(value) {
     Number.isFinite(value.assumptions.trading_cost) &&
     Number.isInteger(value.assumptions.trading_days_per_year) &&
     Number.isFinite(value.assumptions.risk_free_rate) &&
+    Array.isArray(value.curve) &&
+    value.curve.length > 0 &&
+    value.curve.every((row) => (
+      isObject(row) &&
+      typeof row.date === "string" &&
+      Number.isFinite(row.strategy_growth) &&
+      Number.isFinite(row.buy_hold_growth)
+    )) &&
     hasNumbers(value.strategy_before_costs, PERFORMANCE_METRICS) &&
     hasNumbers(value.strategy_after_costs, PERFORMANCE_METRICS) &&
     hasNumbers(value.buy_hold, PERFORMANCE_METRICS)

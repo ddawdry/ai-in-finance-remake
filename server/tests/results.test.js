@@ -62,6 +62,10 @@ function backtestResult() {
       trading_days_per_year: 252,
       risk_free_rate: 0
     },
+    curve: [
+      { date: "2025-01-02", strategy_growth: 1.01, buy_hold_growth: 1.02 },
+      { date: "2025-01-03", strategy_growth: 1.03, buy_hold_growth: 1.01 }
+    ],
     strategy_before_costs: performanceMetrics(0.1),
     strategy_after_costs: performanceMetrics(0.07),
     buy_hold: performanceMetrics(0.12)

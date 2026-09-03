@@ -3,6 +3,7 @@ import axios from "axios";
 
 import "./App.css";
 import Header from "./components/header";
+import BacktestPanel from "./components/BacktestPanel";
 import DecisionPanel from "./components/DecisionPanel";
 import Login from "./pages/login";
 import {
@@ -18,6 +19,7 @@ export default function App() {
     Boolean(localStorage.getItem("token"))
   ));
   const [modelResult, setModelResult] = useState(null);
+  const [backtestResult, setBacktestResult] = useState(null);
   const [status, setStatus] = useState("loading");
   const [reloadCount, setReloadCount] = useState(0);
 
@@ -26,16 +28,21 @@ export default function App() {
 
     let cancelled = false;
 
-    axios.get(`${API_URL}/api/model-results`)
-      .then((response) => {
+    Promise.all([
+      axios.get(`${API_URL}/api/model-results`),
+      axios.get(`${API_URL}/api/backtest-results`),
+    ])
+      .then(([modelResponse, backtestResponse]) => {
         if (!cancelled) {
-          setModelResult(response.data);
+          setModelResult(modelResponse.data);
+          setBacktestResult(backtestResponse.data);
           setStatus("ready");
         }
       })
       .catch(() => {
         if (!cancelled) {
           setModelResult(null);
+          setBacktestResult(null);
           setStatus("error");
         }
       });
@@ -49,6 +56,7 @@ export default function App() {
     localStorage.removeItem("token");
     setLoggedIn(false);
     setModelResult(null);
+    setBacktestResult(null);
   };
 
   if (!loggedIn) {
@@ -82,14 +90,17 @@ export default function App() {
         </main>
       )}
 
-      {status === "ready" && modelResult && (
-        <DashboardContent result={modelResult} />
+      {status === "ready" && modelResult && backtestResult && (
+        <DashboardContent
+          result={modelResult}
+          backtest={backtestResult}
+        />
       )}
     </div>
   );
 }
 
-function DashboardContent({ result }) {
+function DashboardContent({ result, backtest }) {
   const latest = getLatestPrediction(result);
   const recent = result.predictions.slice(-10).reverse();
 
@@ -107,6 +118,7 @@ function DashboardContent({ result }) {
       </div>
 
       <DecisionPanel result={result} prediction={latest} />
+      <BacktestPanel result={backtest} />
 
       <section className="history-section" aria-labelledby="history-title">
         <div className="section-heading">

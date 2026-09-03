@@ -20,3 +20,33 @@ export function getLatestPrediction(result) {
   }
   return result.predictions[result.predictions.length - 1];
 }
+
+export function buildBacktestChartData(curve) {
+  if (!Array.isArray(curve) || !curve.length) {
+    throw new Error("Backtest results do not contain chart data.");
+  }
+
+  return {
+    labels: curve.map((row) => formatDate(row.date)),
+    datasets: [
+      {
+        label: "Direction strategy",
+        data: curve.map((row) => (row.strategy_growth - 1) * 100),
+        borderColor: "#71ce91",
+        backgroundColor: "#71ce91",
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.15,
+      },
+      {
+        label: "Buy and hold",
+        data: curve.map((row) => (row.buy_hold_growth - 1) * 100),
+        borderColor: "#e7b84b",
+        backgroundColor: "#e7b84b",
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.15,
+      },
+    ],
+  };
+}

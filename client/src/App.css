@@ -177,6 +177,68 @@
   padding-top: 24px;
 }
 
+.backtest-section {
+  padding: 26px 0 34px;
+  border-top: 1px solid #343635;
+}
+
+.backtest-section .section-heading p {
+  margin: 5px 0 0;
+  color: #9da09c;
+  font-size: 0.82rem;
+}
+
+.backtest-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(250px, 0.8fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.backtest-chart {
+  position: relative;
+  height: 340px;
+  padding: 16px;
+  border: 1px solid #343635;
+  border-radius: 6px;
+  background: #191a1a;
+}
+
+.backtest-summary {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid #3a3c3a;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  min-height: 58px;
+  border-bottom: 1px solid #343635;
+}
+
+.summary-row span {
+  color: #aeb0ad;
+  font-size: 0.8rem;
+}
+
+.summary-row strong {
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.backtest-outcome {
+  margin: auto 0 0;
+  padding: 16px;
+  border-left: 3px solid #e7b84b;
+  background: #22221d;
+  color: #dedfdb;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
 .section-heading {
   justify-content: space-between;
   gap: 20px;
@@ -353,6 +415,14 @@ tbody tr:last-child td {
   .result-overview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .backtest-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .backtest-summary {
+    min-height: 280px;
+  }
 }
 
 @media (max-width: 560px) {
@@ -390,6 +460,11 @@ tbody tr:last-child td {
     align-items: flex-start;
     flex-direction: column;
     gap: 5px;
+  }
+
+  .backtest-chart {
+    height: 280px;
+    padding: 10px;
   }
 }
 

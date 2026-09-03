@@ -46,6 +46,13 @@ def backtest_result():
         "sharpe_ratio": 0.5,
     }
     return {
+        "daily": pd.DataFrame(
+            {
+                "strategy_growth_after_costs": [1.02, 1.01],
+                "buy_hold_growth": [1.01, 1.03],
+            },
+            index=pd.date_range("2025-01-02", periods=2),
+        ),
         "assumptions": {
             "trading_cost": 0.001,
             "trading_days_per_year": 252,
@@ -136,6 +143,18 @@ def test_backtest_json_contains_safe_summary_fields(tmp_path):
     assert result["assumptions"]["trading_cost"] == 0.001
     assert result["strategy_after_costs"]["total_return"] == 0.07
     assert result["buy_hold"]["total_return"] == 0.12
+    assert result["curve"] == [
+        {
+            "date": "2025-01-02",
+            "strategy_growth": 1.02,
+            "buy_hold_growth": 1.01,
+        },
+        {
+            "date": "2025-01-03",
+            "strategy_growth": 1.01,
+            "buy_hold_growth": 1.03,
+        },
+    ]
     assert "daily" not in result
 
 
