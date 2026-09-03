@@ -37,19 +37,19 @@ export default function BacktestPanel({ result }) {
     interaction: { intersect: false, mode: "index" },
     scales: {
       x: {
-        grid: { display: false },
-        ticks: { color: "#8f928f", maxTicksLimit: 8 },
+        grid: { color: "rgba(35, 75, 112, 0.22)" },
+        ticks: { color: "#8ea2b7", maxTicksLimit: 8 },
       },
       y: {
-        grid: { color: "#303230" },
+        grid: { color: "rgba(35, 75, 112, 0.32)" },
         ticks: {
-          color: "#8f928f",
+          color: "#8ea2b7",
           callback: (value) => `${value}%`,
         },
       },
     },
     plugins: {
-      legend: { labels: { color: "#d9dad7", usePointStyle: true } },
+      legend: { labels: { color: "#dce8f3", usePointStyle: true } },
       tooltip: {
         callbacks: {
           label: (context) => `${context.dataset.label}: ${context.raw.toFixed(1)}%`,

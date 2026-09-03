@@ -28,10 +28,14 @@ export default function Login({ setLoggedIn }) {
     <main className="login-page">
       <form className="login-panel" onSubmit={handleSubmit}>
         <div className="login-brand">
-          <span className="brand-mark">AF</span>
+          <span className="brand-mark" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
           <div>
             <h1>AI Finance</h1>
-            <p>Direction research dashboard</p>
+            <p>Stock direction dashboard</p>
           </div>
         </div>
 

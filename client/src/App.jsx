@@ -105,53 +105,81 @@ function DashboardContent({ result, backtest }) {
   const recent = result.predictions.slice(-10).reverse();
 
   return (
-    <main className="dashboard">
-      <div className="dashboard-heading">
-        <div>
-          <p className="asset-type">{result.asset_type}</p>
-          <h1>{result.ticker}</h1>
+    <div className="dashboard-layout">
+      <aside className="market-sidebar" aria-label="Dashboard navigation">
+        <div className="sidebar-section">
+          <p className="sidebar-title">Markets</p>
+          <p className="sidebar-group">Stocks</p>
+          <span className="ticker-link active">{result.ticker}</span>
         </div>
-        <div className="as-of">
-          <span>Latest test date</span>
-          <strong>{formatDate(latest.date)}</strong>
-        </div>
-      </div>
 
-      <DecisionPanel result={result} prediction={latest} />
-      <BacktestPanel result={backtest} />
+        <nav className="sidebar-section" aria-label="Page sections">
+          <p className="sidebar-title">View</p>
+          <a href="#overview">Overview</a>
+          <a href="#backtest">Backtest</a>
+          <a href="#history">History</a>
+        </nav>
 
-      <section className="history-section" aria-labelledby="history-title">
-        <div className="section-heading">
-          <h2 id="history-title">Recent direction results</h2>
-          <span>{result.model.replaceAll("_", " ")}</span>
+        <p className="sidebar-note">
+          This tool shows model test results. It does not place trades.
+        </p>
+      </aside>
+
+      <main className="dashboard">
+        <div className="dashboard-heading" id="overview">
+          <div>
+            <p className="asset-type">{result.asset_type} / daily direction</p>
+            <h1>{result.ticker} market model</h1>
+          </div>
+          <div className="as-of">
+            <span>Latest test date</span>
+            <strong>{formatDate(latest.date)}</strong>
+          </div>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Actual</th>
-                <th>Predicted</th>
-                <th>Up probability</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map((row) => (
-                <tr key={row.date}>
-                  <td>{formatDate(row.date)}</td>
-                  <td className={`direction-text ${row.actual_direction}`}>
-                    {row.actual_direction}
-                  </td>
-                  <td className={`direction-text ${row.predicted_direction}`}>
-                    {row.predicted_direction}
-                  </td>
-                  <td>{formatPercent(row.up_probability)}</td>
+
+        <DecisionPanel result={result} prediction={latest} />
+
+        <div id="backtest">
+          <BacktestPanel result={backtest} />
+        </div>
+
+        <section
+          className="history-section"
+          id="history"
+          aria-labelledby="history-title"
+        >
+          <div className="section-heading">
+            <h2 id="history-title">Recent direction results</h2>
+            <span>{result.model.replaceAll("_", " ")}</span>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Actual</th>
+                  <th>Predicted</th>
+                  <th>Up probability</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </main>
+              </thead>
+              <tbody>
+                {recent.map((row) => (
+                  <tr key={row.date}>
+                    <td>{formatDate(row.date)}</td>
+                    <td className={`direction-text ${row.actual_direction}`}>
+                      {row.actual_direction}
+                    </td>
+                    <td className={`direction-text ${row.predicted_direction}`}>
+                      {row.predicted_direction}
+                    </td>
+                    <td>{formatPercent(row.up_probability)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
   );
 }

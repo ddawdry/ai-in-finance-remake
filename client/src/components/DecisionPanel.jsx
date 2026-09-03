@@ -9,7 +9,7 @@ export default function DecisionPanel({ result, prediction }) {
       <div className={`direction-panel ${direction}`}>
         <span className="panel-label">Predicted direction</span>
         <strong>{directionLabel}</strong>
-        <span>Next trading day</span>
+        <span className="panel-detail">Next trading day</span>
       </div>
 
       <div className="metric-panel">
@@ -23,13 +23,13 @@ export default function DecisionPanel({ result, prediction }) {
       <div className="metric-panel">
         <span className="panel-label">Model accuracy</span>
         <strong>{formatPercent(result.metrics.accuracy)}</strong>
-        <span>Walk-forward test</span>
+        <span className="panel-detail">Walk-forward test</span>
       </div>
 
       <div className="metric-panel">
         <span className="panel-label">Baseline accuracy</span>
         <strong>{formatPercent(result.baseline.metrics.accuracy)}</strong>
-        <span>Majority class</span>
+        <span className="panel-detail">Majority class</span>
       </div>
     </section>
   );
