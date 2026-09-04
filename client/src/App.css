@@ -118,7 +118,7 @@ html {
   height: calc(100vh - 62px);
   display: flex;
   flex-direction: column;
-  padding: 28px 20px;
+  padding: 28px 18px;
   border-right: 1px solid #19324d;
   background: #050e1b;
 }
@@ -142,9 +142,11 @@ html {
 }
 
 .sidebar-group {
-  margin-top: 7px;
-  color: #7d91a7;
-  font-size: 0.75rem;
+  margin-top: 10px;
+  padding: 0 10px 7px;
+  border-bottom: 1px solid #17324c;
+  color: #9eb4c8;
+  font-size: 0.72rem;
   font-weight: 650;
   text-transform: uppercase;
 }
@@ -325,14 +327,13 @@ button.ticker-link:disabled::after {
 
 .backtest-layout {
   display: grid;
-  grid-template-columns: minmax(0, 2.2fr) minmax(225px, 0.75fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
-  align-items: stretch;
 }
 
 .backtest-chart {
   position: relative;
-  height: 350px;
+  height: 430px;
   padding: 14px;
   border: 1px solid #173653;
   border-radius: 5px;
@@ -340,18 +341,25 @@ button.ticker-link:disabled::after {
 }
 
 .backtest-summary {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border-top: 1px solid #24435e;
 }
 
 .summary-row {
-  min-height: 58px;
+  min-height: 72px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 16px;
+  border-right: 1px solid #193650;
   border-bottom: 1px solid #193650;
+}
+
+.summary-row:nth-child(4) {
+  border-right: 0;
 }
 
 .summary-row span {
@@ -365,7 +373,8 @@ button.ticker-link:disabled::after {
 }
 
 .backtest-outcome {
-  margin: auto 0 0;
+  grid-column: 1 / -1;
+  margin: 14px 0 0;
   padding: 14px;
   border-left: 3px solid #0bb8ff;
   background: #081c30;
@@ -559,67 +568,26 @@ tbody tr:last-child td {
 }
 
 @media (max-width: 980px) {
-  .dashboard-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .market-sidebar {
-    position: static;
-    height: auto;
-    flex-direction: row;
-    align-items: center;
-    gap: 20px;
-    padding: 12px 22px;
-    border-right: 0;
-    border-bottom: 1px solid #19324d;
-  }
-
-  .sidebar-section {
-    flex-direction: row;
-    align-items: center;
-    margin: 0;
-  }
-
-  .asset-section {
-    max-width: 48%;
-    overflow-x: auto;
-  }
-
-  button.ticker-link {
-    width: auto;
-    border-bottom: 2px solid transparent;
-  }
-
-  .sidebar-group,
-  .sidebar-note {
-    display: none;
-  }
-
-  .ticker-link,
-  .sidebar-section a {
-    min-height: 32px;
-    border-left: 0;
-    border-bottom: 2px solid transparent;
-  }
-
-  .ticker-link.active,
-  .sidebar-section a:hover {
-    border-left-color: transparent;
-    border-bottom-color: #0bb8ff;
-  }
-
   .result-overview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 760px) {
-  .backtest-layout {
-    grid-template-columns: 1fr;
+  .backtest-chart {
+    height: 350px;
   }
 
   .backtest-summary {
-    min-height: 270px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary-row:nth-child(2) {
+    border-right: 0;
+  }
+
+  .summary-row:nth-child(4) {
+    border-right: 0;
   }
 }
 
@@ -629,27 +597,43 @@ tbody tr:last-child td {
   }
 
   .research-label,
-  .advice-label,
-  .market-sidebar .sidebar-title,
-  .market-sidebar .ticker-link {
+  .advice-label {
     display: none;
   }
 
-  .market-sidebar .asset-section {
-    display: none;
+  .dashboard-layout {
+    grid-template-columns: 118px minmax(0, 1fr);
   }
 
   .market-sidebar {
-    justify-content: center;
-    padding: 7px 10px;
+    padding: 20px 8px;
+  }
+
+  .market-sidebar .sidebar-title,
+  .market-sidebar nav,
+  .sidebar-note {
+    display: none;
+  }
+
+  .sidebar-group {
+    padding: 0 7px 6px;
+    font-size: 0.65rem;
+  }
+
+  .ticker-link {
+    min-height: 32px;
+    padding: 0 7px;
+    font-size: 0.76rem;
   }
 
   .dashboard {
-    padding: 22px 14px 42px;
+    padding: 20px 10px 40px;
   }
 
   .dashboard-heading {
     align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .dashboard-heading h1 {
@@ -657,7 +641,7 @@ tbody tr:last-child td {
   }
 
   .as-of {
-    max-width: 125px;
+    align-items: flex-start;
   }
 
   .result-overview {
@@ -680,8 +664,16 @@ tbody tr:last-child td {
   }
 
   .backtest-chart {
-    height: 280px;
+    height: 300px;
     padding: 8px;
+  }
+
+  .backtest-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-row {
+    border-right: 0;
   }
 
   .login-panel {
