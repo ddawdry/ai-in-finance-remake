@@ -5,7 +5,7 @@ The main setup steps are kept in the project README.
 The project has three parts:
 
 - The Python model updates `data/marketData.json`.
-- The Express server reads that data and handles login.
+- The Express server reads that data for the dashboard.
 - The React client displays the dashboard.
 
 You can start all three parts on Windows by running `run_app.bat` from the project root.

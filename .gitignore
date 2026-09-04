@@ -24,6 +24,14 @@ dist-ssr
 credentials.json
 service-account*.json
 secrets.json
+.envrc
+.npmrc
+.pypirc
+.netrc
+*.secret
+*.secrets
+id_rsa
+id_ed25519
 
 # Local databases and generated data
 *.db

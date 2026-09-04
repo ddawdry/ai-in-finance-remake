@@ -23,11 +23,10 @@ My main role was testing, data input, and data sanitisation. I am now rebuilding
 - Historical price charts
 - Currency display options
 - A simple investment simulator
-- Local user login with MongoDB
 
 ## Setup
 
-You will need Node.js, Python 3, and MongoDB.
+You will need Node.js and Python 3.
 
 Install the frontend packages:
 
@@ -50,14 +49,6 @@ Install the Python packages:
 ```powershell
 pip install -r ml\requirements.txt
 ```
-
-Create the local environment file:
-
-```powershell
-Copy-Item server\.env.example server\.env
-```
-
-Update `server/.env` with your own MongoDB connection and JWT secret. Do not commit this file.
 
 ## Running the Project
 
@@ -84,7 +75,7 @@ npm run dev
 ## Project Structure
 
 - `client/`: React frontend
-- `server/`: Express API and MongoDB code
+- `server/`: Express API for the model results
 - `ml/`: Python machine learning code
 - `data/`: market data used by the application
 - `tests/`: automated tests as they are added
@@ -102,7 +93,6 @@ The scope for the first direction model is in [docs/model-scope.md](docs/model-s
 - pandas, yfinance, and scikit-learn
 - React and Vite
 - Node.js and Express
-- MongoDB
 - Chart.js
 
 ## Important Note

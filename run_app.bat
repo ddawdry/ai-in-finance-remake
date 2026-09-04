@@ -1,25 +1,25 @@
-taskkill /f /im node.exe >nul 2>&1
-
 @echo off
+setlocal
+cd /d "%~dp0"
 
-echo Starting Python Model
-cd /d "%~dp0\ml"
-python model.py
+if not exist "data\results\model_results.json" (
+  echo Creating the first AAPL model results...
+  python -m ml.model
+  if errorlevel 1 (
+    echo The model could not run. Check the Python packages and internet connection.
+    pause
+    exit /b 1
+  )
+)
 
 echo Starting Backend Server
-cd /d "%~dp0\server"
-start cmd /k "npm install && node server.js"
+start "AI Finance API" cmd /k "cd /d ""%~dp0server"" && npm start"
 
 echo Starting Frontend
-cd /d "%~dp0\client"
-start cmd /k "npm install && npm run dev"
+start "AI Finance UI" cmd /k "cd /d ""%~dp0client"" && npm run dev"
 
 timeout /t 5
 
 echo Opening Web App
 start http://localhost:5173
-
-echo.
-echo Close this window when finished to stop the app.
-pause
-taskkill /f /im node.exe
+endlocal
