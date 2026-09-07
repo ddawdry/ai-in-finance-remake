@@ -1,5 +1,11 @@
 # Tests
 
-Automated tests will be added here as the project is rebuilt.
+This folder contains the Python tests for the data and machine learning pipeline.
 
-The first tests will cover data input, data sanitisation, API responses, and the machine learning output format.
+Run them from the project root with:
+
+```powershell
+python -m pytest
+```
+
+The server and frontend keep their JavaScript tests in their own `tests` folders. The full list of commands and test areas is in [docs/testing.md](../docs/testing.md).

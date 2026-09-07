@@ -2,67 +2,109 @@
 
 ## Aim
 
-The first model will predict whether a stock closes up or down on the next trading day.
+The model predicts whether an asset will close up or down on the next day.
 
-It will not try to predict the exact closing price. The main result will be a direction label and, later, the model's estimated chance of an up day.
+It does not predict an exact closing price. Its main outputs are an up or down label and an estimated chance of an up day.
 
-## First Dataset
+## Market Data
 
-The first version will use:
+Daily market data comes from Yahoo Finance through `yfinance`. The default date range starts on `2016-01-01` and ends at the latest available day.
 
-- Ticker: `AAPL`
-- Start date: `2016-01-01`
-- End date: the latest completed trading day
-- Interval: one day
-- Data source: Yahoo Finance through `yfinance`
+The project currently supports these assets:
 
-Starting with one stock will make it easier to check the data, features, model, and backtest. More stocks and cryptocurrencies can be added after the first version works properly.
+**Stocks:** AAPL, MSFT, TSLA, GOOGL, and AMZN
+
+**Crypto:** BTC-USD, ETH-USD, SOL-USD, ADA-USD, and DOGE-USD
+
+Stock data follows exchange trading days. Crypto data can include weekends because those markets run every day.
 
 ## Prediction Target
 
-For each trading day, the model will compare that day's closing price with the next trading day's closing price.
+For each row, the model compares the current closing price with the next closing price.
 
 - `1` means the next close is higher.
 - `0` means the next close is the same or lower.
 
-The model will only use information that was available by the end of the current day. It must not use prices or other values from the day it is trying to predict.
+The final day is removed because its next closing price is not known. Model features only use the current day and earlier days. They do not use information from the day being predicted.
 
-## First Features
+## Model Features
 
-The first feature set will be based on historical price and volume data. It will include:
+The model uses 14 features made from historical price and volume data:
 
-- Lagged returns
-- Moving averages
-- Price compared with moving averages
-- Rolling volatility
-- Daily price range
-- Volume changes where the data is available
+- Returns over 1, 3, and 5 days
+- Moving averages over 5, 10, and 20 days
+- Closing price compared with each moving average
+- Volatility over 5 and 20 days
+- One-day volume change
+- Daily high-to-low price range
+- Open-to-close price change
 
-Each feature will be calculated from the current day and earlier days only.
+Rows with missing feature values are removed before training. This mainly affects the first rows because rolling features need earlier data.
 
-## How It Will Be Checked
+## Classifier
 
-The data will stay in date order. Older rows will be used for training and newer rows will be used for testing.
+The main model is a Random Forest classifier from scikit-learn.
 
-The model will be compared with simple baselines. One baseline will predict the most common direction in the training data. Another will predict that the next day follows the current day's direction.
+Its current settings are:
 
-A backtest will compare the model's signals with buying and holding the same stock. Trading costs will be included later so the result is not too generous.
+- 200 decision trees
+- Maximum tree depth of 6
+- Random seed of 42
+- One processing job, which keeps test runs repeatable
 
-## Not Included in the First Version
+The model returns a direction label and an up probability for each test row.
 
-The first version will not include:
+## Model Evaluation
+
+The data always stays in date order and is never randomly shuffled.
+
+The oldest 80% of rows form the first training set. The model then predicts the next block of up to 60 rows. After each block, those dates become part of the training history before the following block is tested. This is called walk-forward evaluation.
+
+The reported model measurements are:
+
+- Accuracy
+- Precision
+- Recall
+- F1 score
+
+The exported result is compared with a majority-class baseline. This baseline predicts the most common direction found in the original training data for every test row.
+
+## Backtest
+
+The backtest uses the walk-forward predictions. The strategy holds the asset for the next day when the model predicts up. It stays out of the market when the model predicts down.
+
+The strategy is compared with buying and holding the same asset over the matching dates. A trading cost of `0.1%` is applied whenever the strategy changes position.
+
+The backtest reports:
+
+- Total return
+- Annualised return
+- Annualised volatility
+- Maximum drawdown
+- Sharpe ratio
+
+Stocks use 252 trading days per year for annual calculations. Crypto uses 365 days.
+
+This is a simplified historical test. It does not include every real trading cost, delay, spread, or tax.
+
+## Outside the Current Scope
+
+The current version does not include:
 
 - Exact price predictions
-- Intraday or live trading
+- Live or intraday trading
 - Automatic buying or selling
-- Options, futures, or leveraged products
+- Managing investments for users
 - Portfolio building or position sizing
+- Options, futures, or leveraged products
 - Paid market data or paid APIs
 - News or social media sentiment
 - Deep learning
-- Claims that the model can make a profit
+- Claims that the model will make a profit
 - Financial advice
 
 ## What Counts as a Useful Result
 
-The model does not need high accuracy to make this project useful. The first version will be successful if the data steps are repeatable, the model does not use future information, the backtest is fair, and the results are compared honestly with the baselines.
+The model does not need unusually high accuracy to make this project useful. The main goal is to build a repeatable process, prevent future data from leaking into training, compare the model fairly, and explain the results honestly.
+
+The full pipeline is explained in more detail in [model.md](model.md).
