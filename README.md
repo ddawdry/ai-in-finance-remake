@@ -4,6 +4,8 @@ AI in Finance is a learning project that uses historical market data to predict 
 
 The project does not try to predict an exact future price. It looks for patterns in past data, tests those patterns on later data, and compares the model with a simple baseline.
 
+![AAPL dashboard showing the model result and historical backtest](docs/screenshots/dashboard-aapl.png)
+
 ## Project Background
 
 This project started as a university group project between four students. The work was split into four main areas:
@@ -38,6 +40,22 @@ The current asset list includes:
 **Crypto:** BTC-USD, ETH-USD, SOL-USD, ADA-USD, and DOGE-USD
 
 An asset can only be selected in the dashboard after its model and backtest results have been created locally.
+
+## Screenshots
+
+The dashboard uses the same layout for stocks and cryptocurrencies.
+
+### Cryptocurrency Dashboard
+
+![BTC dashboard showing the model result and historical backtest](docs/screenshots/dashboard-crypto.png)
+
+### Recent Direction Results
+
+![Table comparing recent predicted and actual directions](docs/screenshots/recent-direction.png)
+
+### Smaller Screen
+
+![Dashboard shown on a smaller screen](docs/screenshots/dashboard-mobile.png)
 
 ## How It Works
 
